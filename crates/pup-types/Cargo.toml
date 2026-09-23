@@ -1,0 +1,26 @@
+[package]
+name = "pup-types"
+description = "Types for the Pup API"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+repository.workspace = true
+documentation.workspace = true
+include = ["/src", "/README.md", "/LICENSE*"]
+
+[dependencies]
+base64.workspace = true
+url.workspace = true
+chrono.workspace = true
+hex.workspace = true
+serde.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true
