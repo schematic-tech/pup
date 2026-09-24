@@ -11,7 +11,6 @@ pub(super) enum Ink {
     #[default]
     Plain,
     Muted,
-    Qualification,
     Accent,
     Activity,
     Pass,
@@ -25,7 +24,6 @@ impl Ink {
     pub fn style(self) -> Style {
         let rgb = match self {
             Self::Plain => return Style::new(),
-            Self::Qualification => return Self::Muted.style().italic(),
             Self::Muted => (176, 182, 197),
             Self::Accent => (209, 177, 245),
             Self::Activity => return Style::new().cyan().bright(),

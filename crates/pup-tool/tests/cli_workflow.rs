@@ -143,14 +143,12 @@ fn new_language_discovery_respects_exclusions_and_rejects_ambiguous_names() {
 }
 
 #[test]
-fn qualifications_require_details_in_human_output_but_are_always_in_json() {
+fn pass_explanations_require_details_in_human_output_but_are_always_in_json() {
     let details = json!([
         {"text":"", "emphasized":false},
         {"text":"Conclusion", "emphasized":true},
         {"text":"  The checked behavior is explained below.", "emphasized":false},
-        {"text":"  The function examines each input value.", "emphasized":false},
-        {"text":"  This result assumes integer inputs.", "emphasized":false},
-        {"text":"  The code was inspected, not executed.", "emphasized":false}
+        {"text":"  The function examines each input value.", "emphasized":false}
     ]);
     for outcome in ["pass", "fail", "conditional"] {
         let fixture = Fixture::configured(false, false, |routes| {
@@ -174,12 +172,11 @@ fn qualifications_require_details_in_human_output_but_are_always_in_json() {
                 let output = fixture.run(&args);
                 assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
                 let text = String::from_utf8_lossy(&output.stdout);
-                for qualification in [
-                    "This result assumes integer inputs.",
-                    "The code was inspected, not executed.",
-                ] {
-                    assert_eq!(text.contains(qualification), expanded || json_output, "{text}");
-                }
+                assert_eq!(
+                    text.contains("The function examines each input value."),
+                    outcome != "pass" || expanded || json_output,
+                    "{text}"
+                );
                 if json_output {
                     let value: Value = serde_json::from_slice(&output.stdout).unwrap();
                     let check = &value["data"]["rows"][0]["current"];
@@ -1500,7 +1497,7 @@ mod terminal {
     }
 
     #[test]
-    fn watched_passes_start_with_headline_and_enter_reveals_qualifications_and_explanation() {
+    fn watched_passes_start_with_headline_and_enter_reveals_explanation() {
         for multiple in [false, true] {
             let fixture = Fixture::configured(false, false, |routes| {
                 let check = routes
@@ -1513,8 +1510,7 @@ mod terminal {
                     {"text":"", "emphasized":false},
                     {"text":"Conclusion", "emphasized":true},
                     {"text":"  Duplicate items are removed.", "emphasized":false},
-                    {"text":"  The function tracks previously seen integers.", "emphasized":false},
-                    {"text":"  This result assumes integer inputs.", "emphasized":false}
+                    {"text":"  The function tracks previously seen integers.", "emphasized":false}
                 ]);
                 let passed = check.clone();
                 for response in routes.values_mut() {
@@ -1541,12 +1537,10 @@ mod terminal {
             let mut text = String::new();
             read_until(&mut master, &mut text, "Esc/Ctrl+C close");
             assert!(text.contains("Duplicate items are removed."));
-            assert!(!text.contains("This result assumes integer inputs."));
             assert!(!text.contains("The function tracks previously seen integers."));
             assert!(text.contains("Enter for more details"));
             master.write_all(b"\r").unwrap();
             read_until(&mut master, &mut text, "The function tracks previously seen integers.");
-            read_until(&mut master, &mut text, "This result assumes integer inputs.");
             read_until(&mut master, &mut text, "Esc back");
             master.write_all(b"\x03").unwrap();
             read_until(&mut master, &mut text, "\x1b[?1049l");

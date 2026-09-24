@@ -84,7 +84,7 @@ pub struct CheckArgs {
     /// Stream admission and live JSON events, then a final result. Requires --json.
     #[arg(long, conflicts_with = "detach")]
     pub stream: bool,
-    /// Show full explanations, qualifications, evidence, and reproduction instructions. JSON is always complete.
+    /// Show full explanations, evidence, and reproduction instructions. JSON is always complete.
     #[arg(long)]
     pub details: bool,
 }
@@ -112,7 +112,7 @@ pub struct StatusArgs {
     /// Include a page of attempt history for the selected supertests.
     #[arg(long)]
     pub history: bool,
-    /// Show full explanations, qualifications, evidence, and reproduction instructions. JSON is always complete.
+    /// Show full explanations, evidence, and reproduction instructions. JSON is always complete.
     #[arg(long)]
     pub details: bool,
     /// Continue history using the `next_before` check number from JSON output.

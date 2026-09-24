@@ -298,7 +298,6 @@ pub(super) fn full_details(check: &Check) -> Vec<Line> {
     let mut lines = Vec::new();
     let narrative = super::compact::narrative_layout(check);
     for (index, detail) in check.presentation.details.iter().enumerate() {
-        let mut ink = Ink::Plain;
         if let Some(narrative) = &narrative {
             if index + 1 == narrative.headline {
                 // The saved headline is the heading; a generic Conclusion label adds nothing.
@@ -312,18 +311,13 @@ pub(super) fn full_details(check: &Check) -> Vec<Line> {
                 ));
                 continue;
             }
-            if narrative.explanation == Some(index)
-                || (!narrative.qualifications.is_empty() && index == narrative.qualifications.start)
-            {
+            if narrative.explanation == Some(index) {
                 lines.push(Line::default());
-            }
-            if narrative.qualifications.contains(&index) {
-                ink = Ink::Qualification;
             }
         }
         // split(), not lines(): preserve embedded empty paragraphs and trailing newlines.
         for text in detail.text.split('\n') {
-            lines.push(Line::default().push(text, ink, detail.emphasized));
+            lines.push(Line::default().push(text, Ink::Plain, detail.emphasized));
         }
     }
     trim_padding(&mut lines);

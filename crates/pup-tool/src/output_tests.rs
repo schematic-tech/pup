@@ -268,7 +268,7 @@ fn focused_check_without_history_has_one_identity_and_no_empty_history_controls(
 }
 
 #[test]
-fn selected_result_keeps_explanation_and_evidence_and_expands_qualifications() {
+fn selected_result_keeps_explanation_and_evidence_and_expands_reproduction() {
     let mut results = results(2);
     for assurance in [
         pup_types::CheckAssurance::Uncertified,
@@ -295,13 +295,11 @@ fn selected_result_keeps_explanation_and_evidence_and_expands_qualifications() {
     results.rows[0].current = Some(normalization_check(42));
     let mut browser = Browser::new(&results);
     let frame = plain_frame(&mut browser, &results, 120, 36).join("\n");
-    assert!(!frame.contains("This example uses ASCII spaces."));
     assert!(frame.contains("text = \"a   b\""));
     assert!(!frame.contains("reproduce"));
     browser.key(KeyCode::Enter, &results, 36, 120);
     let expanded = plain_frame(&mut browser, &results, 120, 36).join("\n");
     assert!(expanded.contains("reproduce"));
-    assert!(expanded.contains("This example uses ASCII spaces."));
 }
 
 #[test]
@@ -1006,9 +1004,9 @@ fn labels_cannot_supply_a_missing_verdict_or_certification() {
 #[test]
 fn counterexample_certification_comes_from_the_result_not_its_heading() {
     let mut check = normalization_check(42);
-    check.presentation.details[9].text = "Certified counterexample".into();
+    check.presentation.details[8].text = "Certified counterexample".into();
     assert!(!lines_text(&evidence(&check, EvidenceView::Summary, false)).contains("Certified counterexample"));
-    check.presentation.details[9].text = "Counterexample".into();
+    check.presentation.details[8].text = "Counterexample".into();
     check.result.as_mut().unwrap().assurance = pup_types::CheckAssurance::Certified;
     assert!(lines_text(&evidence(&check, EvidenceView::Summary, false)).contains("Certified counterexample"));
 }
@@ -1240,7 +1238,6 @@ fn normalization_check(number: u64) -> Check {
         ("Conclusion", true),
         ("  Normalizing twice changes the text.", false),
         ("  A single replacement can leave adjacent spaces.", false),
-        ("  This example uses ASCII spaces.", false),
         ("", false),
         ("Problem 1", true),
         ("  Location: supertests/normalize_spaces.py:5", false),
@@ -1655,7 +1652,7 @@ fn available_fix_is_shown_without_a_preparation_hint_or_changes_to_its_data() {
 }
 
 #[test]
-fn compact_results_keep_exact_evidence_and_show_qualifications_only_in_full_details() {
+fn compact_results_keep_exact_evidence_and_expand_reproduction_in_full_details() {
     console::set_colors_enabled(true);
     let check = normalization_check(42);
     let before = serde_json::to_value(&check).unwrap();
@@ -1667,7 +1664,7 @@ fn compact_results_keep_exact_evidence_and_show_qualifications_only_in_full_deta
     let details = lines_text(&presentation::evidence(&check, EvidenceView::Full, false));
     assert!(!details.contains("Conclusion"));
     assert!(details.contains("Normalizing twice changes the text.\n\n  A single replacement"));
-    assert!(details.contains("A single replacement can leave adjacent spaces.\n\n  This example"));
+    assert!(details.contains("A single replacement can leave adjacent spaces.\n\nProblem 1"));
     assert!(details.contains("reproduce = Call collapse_spaces"));
     for view in [EvidenceView::Selected, EvidenceView::Full] {
         let lines = evidence(&check, view, false);
@@ -1678,28 +1675,17 @@ fn compact_results_keep_exact_evidence_and_show_qualifications_only_in_full_deta
         assert!(text_style(&headline.render(120, 2), "Normalizing twice").bold);
         let counterexample = lines.iter().find(|line| line.text() == "Counterexample").unwrap();
         assert!(text_style(&counterexample.render(120, 2), "Counterexample").bold);
-        let qualification = lines
-            .iter()
-            .find(|line| line.text().contains("This example uses ASCII spaces."));
-        assert_eq!(qualification.is_some(), view == EvidenceView::Full);
-        if let Some(qualification) = qualification {
-            assert_eq!(
-                text_style(&qualification.render(120, 2), "This example").foreground,
-                Some((176, 182, 197))
-            );
-            assert!(text_style(&qualification.render(120, 2), "This example").italic);
-        }
         assert!(!text_style(&counterexample.render(120, 2), "Counterexample").italic);
     }
     assert_eq!(serde_json::to_value(&check).unwrap(), before);
     let mut embedded = check;
-    embedded.presentation.details[10]
+    embedded.presentation.details[9]
         .text
         .push_str("\n  reproduce = this is part of the witness\nProblem 900");
     let compact = lines_text(&super::compact::details(&embedded));
     assert!(compact.contains("reproduce = this is part of the witness\nProblem 900"));
     let mut evidence_only = normalization_check(42);
-    evidence_only.presentation.details.drain(..5);
+    evidence_only.presentation.details.drain(..4);
     let compact = lines_text(&super::compact::details(&evidence_only));
     assert!(compact.starts_with("Counterexample\n  witness"));
     assert!(
@@ -1722,9 +1708,18 @@ fn unknown_or_partial_presentation_is_preserved_in_compact_output() {
     }
     let mut check = original.clone();
     check.presentation.details.push(pup_types::PresentationLine {
-        text: "Important additional qualification".into(),
+        text: "Additional result information".into(),
         emphasized: true,
     });
+    assert_eq!(super::compact::details(&check), presentation::full_details(&check));
+    check = original.clone();
+    check.presentation.details.insert(
+        4,
+        pup_types::PresentationLine {
+            text: "  An unrecognized narrative record.".into(),
+            emphasized: false,
+        },
+    );
     assert_eq!(super::compact::details(&check), presentation::full_details(&check));
     check = original;
     check.presentation.details.pop();
@@ -1769,7 +1764,7 @@ fn compact_completion_omits_passes_regardless_of_explanation_and_counts_certific
         .presentation
         .details
         .push(pup_types::PresentationLine {
-            text: "  Only ASCII inputs were covered.".into(),
+            text: "  The function preserves every input value.".into(),
             emphasized: false,
         });
     results.rows[2]
@@ -1780,15 +1775,15 @@ fn compact_completion_omits_passes_regardless_of_explanation_and_counts_certific
         .as_mut()
         .unwrap()
         .assurance = pup_types::CheckAssurance::Certified;
-    let qualified = lines_text(&presentation::snapshot(&results, false, false, 80));
-    assert!(qualified.contains("3 passed (1 certified) · 1 failed"));
+    let certified = lines_text(&presentation::snapshot(&results, false, false, 80));
+    assert!(certified.contains("3 passed (1 certified) · 1 failed"));
     for row in &results.rows[1..] {
-        assert!(!qualified.contains(&row.supertest.name));
+        assert!(!certified.contains(&row.supertest.name));
     }
-    assert!(!qualified.contains("Only ASCII inputs were covered."));
-    assert!(!qualified.contains('─'));
+    assert!(!certified.contains("The function preserves every input value."));
+    assert!(!certified.contains('─'));
     let full = lines_text(&presentation::snapshot(&results, false, true, 80));
-    assert!(full.contains("Only ASCII inputs were covered."));
+    assert!(full.contains("The function preserves every input value."));
     assert!(full.contains("pass (certified)"));
     assert_eq!(full.matches(&"─".repeat(76)).count(), 3);
     results.rows.remove(0);
@@ -1846,7 +1841,7 @@ fn unknown_pass_layouts_remain_complete_in_selected_panels_but_require_details_i
 }
 
 #[test]
-fn selected_pass_shows_qualifications_and_explanation_only_when_expanded() {
+fn selected_pass_shows_explanation_only_when_expanded() {
     console::set_colors_enabled(true);
     let mut passed = result_check(1, pup_types::CheckOutcome::Pass, pup_types::CheckAssurance::Uncertified);
     passed.presentation.details = [
@@ -1857,8 +1852,6 @@ fn selected_pass_shows_qualifications_and_explanation_only_when_expanded() {
             "  The function tracks previously seen integers.\nRepeated values are skipped.",
             false,
         ),
-        ("  This result assumes integer inputs.", false),
-        ("  The code was inspected, not executed.", false),
     ]
     .map(|(text, emphasized)| pup_types::PresentationLine {
         text: text.into(),
@@ -1869,7 +1862,7 @@ fn selected_pass_shows_qualifications_and_explanation_only_when_expanded() {
     assert_eq!(lines_text(&evidence(&passed, EvidenceView::Selected, false)), expected);
     let full = lines_text(&evidence(&passed, EvidenceView::Full, false));
     assert!(full.contains("Duplicate items are removed.\n\n  The function tracks previously seen integers."));
-    assert!(full.contains("Repeated values are skipped.\n\n  This result assumes integer inputs."));
+    assert!(full.ends_with("Repeated values are skipped."));
     let original_json = serde_json::to_value(&passed).unwrap();
     for count in [1, 2] {
         let mut results = results(count);
@@ -1883,8 +1876,6 @@ fn selected_pass_shows_qualifications_and_explanation_only_when_expanded() {
             }
             let text = plain_frame(&mut browser, &results, 120, 36).join("\n");
             assert!(text.contains("Duplicate items are removed."));
-            assert_eq!(text.contains("This result assumes integer inputs."), expanded);
-            assert_eq!(text.contains("The code was inspected, not executed."), expanded);
             assert_eq!(text.contains("Repeated values are skipped."), expanded);
             let frame = browser.frame(&results, 120, 36, false);
             let headline = frame
@@ -1893,16 +1884,6 @@ fn selected_pass_shows_qualifications_and_explanation_only_when_expanded() {
                 .unwrap();
             assert_eq!(text_style(headline, "Duplicate items").bold, expanded);
             assert!(!text_style(headline, "Duplicate items").italic);
-            for text in ["This result assumes", "The code was inspected"] {
-                let qualification = frame.iter().find(|line| line.contains(text));
-                assert_eq!(qualification.is_some(), expanded);
-                if let Some(qualification) = qualification {
-                    let style = text_style(qualification, text);
-                    assert!(style.italic);
-                    assert!(!style.bold);
-                    assert_eq!(style.foreground, Some((176, 182, 197)));
-                }
-            }
             assert!(!text.contains("Conclusion"));
         }
         browser.configure(true, false);
@@ -1916,7 +1897,7 @@ fn selected_pass_shows_qualifications_and_explanation_only_when_expanded() {
             original_json
         );
     }
-    // A headline-only fallback or an explanation without qualifications adds no empty section.
+    // A headline-only fallback adds no empty section.
     for length in [4, 3] {
         passed.presentation.details.truncate(length);
         assert_eq!(
@@ -1941,7 +1922,7 @@ fn narrative_emphasis_depends_on_visible_explanation_across_result_states() {
         (None, Some(CheckOperationalError::MissingConclusion)),
         (None, None),
     ] {
-        for length in [3, 5] {
+        for length in [3, 4] {
             let mut check = normalization_check(42);
             check.result = outcome.map(|outcome| pup_types::CheckResult {
                 outcome,
@@ -1952,10 +1933,6 @@ fn narrative_emphasis_depends_on_visible_explanation_across_result_states() {
             check.presentation.details.truncate(length);
             for view in [EvidenceView::Selected, EvidenceView::Full] {
                 let lines = evidence(&check, view, false);
-                assert_eq!(
-                    lines_text(&lines).contains("This example uses ASCII spaces."),
-                    length > 3 && view == EvidenceView::Full
-                );
                 let headline = lines
                     .iter()
                     .find(|line| line.text() == "Normalizing twice changes the text.")
@@ -1966,15 +1943,10 @@ fn narrative_emphasis_depends_on_visible_explanation_across_result_states() {
                 assert_eq!(headline_style.bold, explanation_visible);
                 assert!(!headline_style.italic);
                 for line in lines.iter().skip(1) {
-                    let qualification = line.text().contains("This example uses ASCII spaces.");
                     for wrapped in line.wrapped(24) {
                         for (character, style) in ansi_cells(&wrapped.render(28, 2)) {
                             if !character.is_whitespace() {
-                                assert_eq!(style.italic, qualification);
-                                if qualification {
-                                    assert_eq!(style.foreground, Some((176, 182, 197)));
-                                    assert!(!style.bold);
-                                }
+                                assert!(!style.italic);
                             }
                         }
                     }
@@ -1994,7 +1966,7 @@ fn pass_compaction_does_not_hide_a_problem_error_or_unrecognized_multiline_headl
         assert!(lines_text(&evidence(&check, EvidenceView::Selected, false)).contains("A single replacement"));
     }
     check.problematic = false;
-    check.presentation.details.truncate(5);
+    check.presentation.details.truncate(4);
     assert!(lines_text(&evidence(&check, EvidenceView::Selected, false)).contains("A single replacement"));
     check.operational_error = None;
     check.presentation.details[2]

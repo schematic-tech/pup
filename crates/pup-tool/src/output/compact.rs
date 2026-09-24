@@ -29,7 +29,6 @@ struct Parsed<'a> {
 struct Conclusion<'a> {
     headline: &'a str,
     explanation: Option<&'a str>,
-    qualifications: Vec<&'a str>,
 }
 
 impl Conclusion<'_> {
@@ -71,15 +70,14 @@ fn parse(mut lines: &[PresentationLine]) -> Option<Parsed<'_>> {
             lines = &lines[1..];
         }
         let headline = *body.first()?;
-        // The current producer emits a single-line headline, then one explanation record,
-        // then one record per qualification. Never split prose to guess those boundaries.
-        if headline.trim().is_empty() || headline.contains('\n') {
+        // The current producer emits a single-line headline, then one explanation record.
+        // Never split prose to guess those boundaries.
+        if body.len() > 2 || headline.trim().is_empty() || headline.contains('\n') {
             return None;
         }
         parsed.conclusion = Some(Conclusion {
             headline,
             explanation: body.get(1).copied(),
-            qualifications: body.into_iter().skip(2).collect(),
         });
     }
     while !lines.is_empty() {
@@ -115,7 +113,6 @@ fn parse(mut lines: &[PresentationLine]) -> Option<Parsed<'_>> {
 pub(super) struct NarrativeLayout {
     pub headline: usize,
     pub explanation: Option<usize>,
-    pub qualifications: std::ops::Range<usize>,
 }
 
 pub(super) fn narrative_layout(check: &Check) -> Option<NarrativeLayout> {
@@ -124,7 +121,6 @@ pub(super) fn narrative_layout(check: &Check) -> Option<NarrativeLayout> {
     Some(NarrativeLayout {
         headline,
         explanation: conclusion.explanation.map(|_| headline + 1),
-        qualifications: headline + 2..headline + 2 + conclusion.qualifications.len(),
     })
 }
 
@@ -132,8 +128,8 @@ pub(super) fn details(check: &Check) -> Vec<Line> {
     let Some(parsed) = parse(&check.presentation.details) else {
         return presentation::full_details(check);
     };
-    // Compact views omit qualifications. Only successful checks without problems or errors
-    // also collapse the explanation; full details retain every narrative record.
+    // Only successful checks without problems or errors collapse the explanation;
+    // full details retain every narrative record.
     let headline_only = presentation::is_pass(check)
         && check.terminal
         && !check.problematic
