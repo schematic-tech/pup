@@ -379,13 +379,16 @@ impl Ui {
     }
 
     pub fn error(&self, error: &anyhow::Error) {
+        let exhausted = crate::api::is_exhausted(error);
         if self.json {
             self.json_value(
                 "error",
-                &serde_json::json!({"code": "operation_failed", "message": format!("{error:#}")}),
+                &serde_json::json!({"code": if exhausted { pup_types::api::EXHAUSTED_ERROR_CODE } else { "operation_failed" }, "message": format!("{error:#}")}),
             );
         } else {
-            Self::stderr_lines(&[Line::default().push("! ", Ink::Fail, true).plain(format!("{error:#}"))]);
+            Self::stderr_lines(&[Line::default()
+                .push("! ", if exhausted { Ink::Warning } else { Ink::Fail }, true)
+                .plain(format!("{error:#}"))]);
         }
     }
 

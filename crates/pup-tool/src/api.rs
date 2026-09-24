@@ -50,6 +50,16 @@ pub fn is_not_found(error: &anyhow::Error) -> bool {
         .is_some_and(|error| error.status == StatusCode::NOT_FOUND)
 }
 
+pub fn is_exhausted(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<ServiceError>().is_some_and(|error| {
+        error.status == StatusCode::TOO_MANY_REQUESTS
+            && error
+                .body
+                .as_ref()
+                .is_some_and(|body| body.code == api::EXHAUSTED_ERROR_CODE)
+    })
+}
+
 fn check_cancellation_pending(error: &anyhow::Error) -> bool {
     error.downcast_ref::<ServiceError>().is_some_and(|error| {
         error.status == StatusCode::CONFLICT
@@ -61,6 +71,9 @@ fn check_cancellation_pending(error: &anyhow::Error) -> bool {
 }
 
 pub fn is_retryable(error: &anyhow::Error) -> bool {
+    if is_exhausted(error) {
+        return false;
+    }
     if error.downcast_ref::<ServiceError>().is_some_and(|error| {
         error.status == StatusCode::REQUEST_TIMEOUT
             || error.status == StatusCode::TOO_MANY_REQUESTS
@@ -1181,6 +1194,23 @@ mod tests {
         assert_eq!(result.fix, finished.fix);
         assert!(result.terminal && result.updates_pending && !result.fix_pending);
         server.join().unwrap();
+    }
+
+    #[test]
+    fn quota_exhaustion_is_terminal_but_transient_rate_limits_still_retry() {
+        for (code, exhausted, retryable) in [("exhausted", true, false), ("rate_limited", false, true)] {
+            let error: anyhow::Error = ServiceError {
+                status: StatusCode::TOO_MANY_REQUESTS,
+                body: Some(ApiError {
+                    code: code.into(),
+                    message: "request rejected".into(),
+                    help: None,
+                }),
+            }
+            .into();
+            assert_eq!(is_exhausted(&error), exhausted);
+            assert_eq!(is_retryable(&error), retryable);
+        }
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub const MAX_SOURCE_FILE_BYTES: u64 = 10 * 1024 * 1024;
 pub const MAX_SUPERTESTS_PER_SUBMISSION: usize = 128;
 
 pub mod api {
+    pub const EXHAUSTED_ERROR_CODE: &str = "exhausted";
     pub const AUTH_WHOAMI: &str = "/v1/pup/auth/whoami";
     pub const WORKSPACES: &str = "/v1/pup/workspaces";
 
