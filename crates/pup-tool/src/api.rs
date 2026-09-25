@@ -183,6 +183,10 @@ impl PupClient {
         self.get(api::AUTH_WHOAMI).await
     }
 
+    pub async fn repositories(&self) -> Result<Vec<pup_types::usage::Repository>> {
+        self.get(api::WORKSPACES).await
+    }
+
     pub async fn usage(&self, query: &pup_types::usage::UsageQuery) -> Result<pup_types::usage::UsageReport> {
         let request = self
             .http

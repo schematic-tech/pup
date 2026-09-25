@@ -54,6 +54,30 @@ fn check(index: u64) -> Check {
     })).unwrap()
 }
 
+#[test]
+fn usage_and_cli_status_follow_typed_outcomes_instead_of_display_wording() {
+    use pup_types::{CheckAssurance, CheckOperationalError, CheckOutcome, usage::CheckStatus};
+
+    let mut active = check(1);
+    active.presentation.status.label = "pass".into();
+    assert_eq!(CheckStatus::from_check(&active), CheckStatus::Checking);
+    assert_eq!(status(&active).label, "checking");
+    for (error, expected, label) in [
+        (CheckOperationalError::Blocked, CheckStatus::Blocked, "blocked"),
+        (CheckOperationalError::Canceled, CheckStatus::Canceled, "canceled"),
+        (CheckOperationalError::MissingConclusion, CheckStatus::Error, "error"),
+    ] {
+        active.operational_error = Some(error);
+        assert_eq!(CheckStatus::from_check(&active), expected);
+        assert_eq!(status(&active).label, label);
+    }
+    let mut reported = result_check(2, CheckOutcome::Pass, CheckAssurance::Uncertified);
+    reported.operational_error = Some(CheckOperationalError::Canceled);
+    reported.presentation.status.label = "checking".into();
+    assert_eq!(CheckStatus::from_check(&reported), CheckStatus::Pass);
+    assert_eq!(status(&reported).label, "pass");
+}
+
 fn results(count: usize) -> Results {
     Results {
         repository: "supertest-examples-bad".into(),

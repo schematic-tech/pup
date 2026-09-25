@@ -35,18 +35,18 @@ pub async fn run(store: &StateStore, api_url: &str, args: &UsageArgs, ui: &Ui) -
         sort: UsageSort::StartedAt,
         direction: Direction::Descending,
         page: 1,
+        page_size: None,
         snapshot: None,
     };
     let report = ui
         .progress("Loading usage")
         .run_with_interrupt(
             async {
-                let report = client.usage(&query).await?;
                 if let Some(name) = args.repo.as_deref().filter(|_| query.repository_id.is_none()) {
-                    query.repository_id = Some(repository_named(&report.repositories, name)?);
-                    return client.usage(&query).await;
+                    let repositories = client.repositories().await?;
+                    query.repository_id = Some(repository_named(&repositories, name)?);
                 }
-                Ok(report)
+                client.usage(&query).await
             },
             "Usage request interrupted. Run `pup usage` to retry.",
         )

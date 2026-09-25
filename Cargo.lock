@@ -1167,7 +1167,7 @@ dependencies = [
 
 [[package]]
 name = "pup-tool"
-version = "0.5.5"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1204,7 +1204,7 @@ dependencies = [
 
 [[package]]
 name = "pup-types"
-version = "0.5.5"
+version = "0.6.0"
 dependencies = [
  "base64",
  "chrono",

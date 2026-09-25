@@ -58,12 +58,18 @@ impl Fixture {
                 let mut line = String::new();
                 reader.read_line(&mut line).unwrap();
                 let target = line.split_whitespace().nth(1).unwrap();
-                assert!(line.starts_with("GET /v1/pup/web/usage?"), "{line}");
-                let query: BTreeMap<_, _> = reqwest::Url::parse(&format!("http://localhost{target}"))
+                assert!(
+                    line.starts_with("GET /v1/pup/usage?") || target == "/v1/pup/workspaces",
+                    "{line}"
+                );
+                let mut query: BTreeMap<_, _> = reqwest::Url::parse(&format!("http://localhost{target}"))
                     .unwrap()
                     .query_pairs()
                     .into_owned()
                     .collect();
+                if target == "/v1/pup/workspaces" {
+                    query.insert("resource".into(), "workspaces".into());
+                }
                 let mut authorization = None;
                 loop {
                     let mut header = String::new();
@@ -80,7 +86,10 @@ impl Fixture {
                 }
                 assert_eq!(authorization.as_deref(), Some(format!("Bearer {expected}").as_str()));
                 observed.lock().unwrap().push(query.clone());
-                let (status, value) = respond(&query);
+                let (status, mut value) = respond(&query);
+                if target == "/v1/pup/workspaces" && status == 200 {
+                    value = value["repositories"].take();
+                }
                 let body = value.to_string();
                 write!(socket, "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
             }
@@ -203,7 +212,8 @@ fn repository_names_use_the_server_filter_and_preserve_account_quota() {
     assert!(!text.contains("roundtrip"));
     let requests = fixture.requests.lock().unwrap();
     assert_eq!(requests.len(), 2);
-    assert!(requests.iter().all(|query| query["period"] == "7d"));
+    assert_eq!(requests[0]["resource"], "workspaces");
+    assert_eq!(requests[1]["period"], "7d");
     assert_eq!(requests[1]["repositoryId"], REPOSITORY);
 }
 

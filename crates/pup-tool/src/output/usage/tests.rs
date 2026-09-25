@@ -12,6 +12,7 @@ fn query() -> UsageQuery {
         sort: pup_types::usage::UsageSort::StartedAt,
         direction: pup_types::usage::Direction::Descending,
         page: 1,
+        page_size: None,
         snapshot: None,
     }
 }

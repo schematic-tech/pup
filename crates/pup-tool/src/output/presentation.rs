@@ -20,29 +20,20 @@ enum Kind {
 }
 
 fn kind(check: &Check) -> Kind {
-    if let Some(result) = &check.result {
-        return match result.outcome {
-            CheckOutcome::Pass => Kind::Pass,
-            CheckOutcome::Fail => Kind::Fail,
-            CheckOutcome::Conditional => Kind::Conditional,
-        };
-    }
-    if let Some(error) = &check.operational_error {
-        return match error {
-            CheckOperationalError::Blocked => Kind::Blocked,
-            CheckOperationalError::Canceled => Kind::Canceled,
-            CheckOperationalError::Error | CheckOperationalError::MissingConclusion => Kind::Error,
-        };
-    }
-    if check.terminal {
+    use pup_types::usage::CheckStatus;
+    if check.terminal && check.result.is_none() && check.operational_error.is_none() {
         return Kind::Unavailable;
     }
-    // The current API has no typed queue phase. These two labels refine an independently
-    // known active check only; no label can supply a verdict, error, or certification.
-    match check.presentation.status.label.as_str() {
-        "pending" => Kind::Pending,
-        "queued" => Kind::Queued,
-        _ => Kind::Checking,
+    match CheckStatus::from_check(check) {
+        CheckStatus::Pass => Kind::Pass,
+        CheckStatus::Fail => Kind::Fail,
+        CheckStatus::Conditional => Kind::Conditional,
+        CheckStatus::Blocked => Kind::Blocked,
+        CheckStatus::Canceled => Kind::Canceled,
+        CheckStatus::Error => Kind::Error,
+        CheckStatus::Queued if check.presentation.status.label == "pending" => Kind::Pending,
+        CheckStatus::Queued => Kind::Queued,
+        CheckStatus::Checking => Kind::Checking,
     }
 }
 

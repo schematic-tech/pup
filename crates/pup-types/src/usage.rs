@@ -25,6 +25,35 @@ pub enum CheckStatus {
     Error,
 }
 
+impl CheckStatus {
+    #[must_use]
+    pub fn from_check(check: &crate::Check) -> Self {
+        if let Some(result) = &check.result {
+            return match result.outcome {
+                crate::CheckOutcome::Pass => CheckStatus::Pass,
+                crate::CheckOutcome::Fail => CheckStatus::Fail,
+                crate::CheckOutcome::Conditional => CheckStatus::Conditional,
+            };
+        }
+        if let Some(error) = check.operational_error {
+            return match error {
+                crate::CheckOperationalError::Blocked => CheckStatus::Blocked,
+                crate::CheckOperationalError::Canceled => CheckStatus::Canceled,
+                crate::CheckOperationalError::Error | crate::CheckOperationalError::MissingConclusion => {
+                    CheckStatus::Error
+                }
+            };
+        }
+        if check.terminal {
+            return CheckStatus::Error;
+        }
+        match check.presentation.status.label.as_str() {
+            "queued" | "pending" => CheckStatus::Queued,
+            _ => CheckStatus::Checking,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
@@ -98,6 +127,8 @@ pub struct UsageQuery {
     pub direction: Direction,
     #[serde(default = "first_page")]
     pub page: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_size: Option<u32>,
     pub snapshot: Option<Uuid>,
 }
 const fn first_page() -> u32 {
