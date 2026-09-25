@@ -546,6 +546,9 @@ impl Fixture {
         }
     }
     fn command(&self, args: &[&str]) -> Command {
+        let updates = self.directory.path().join("config").join("updates");
+        std::fs::create_dir_all(&updates).unwrap();
+        std::fs::write(updates.join("releases.json"), b"{}").unwrap();
         let mut command = Command::new(env!("CARGO_BIN_EXE_pup"));
         command
             .args(args)
@@ -554,7 +557,6 @@ impl Fixture {
             .env("PUP_API_URL", &self.service.origin)
             .env("PUP_ACCESS_TOKEN", "fixture-token")
             .env("PUP_NO_DAEMON", "1")
-            .env("PUP_NO_UPDATE_CHECK", "1")
             .env("NO_COLOR", "1");
         command
     }

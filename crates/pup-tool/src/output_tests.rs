@@ -121,6 +121,7 @@ fn human_follow_ups_use_readable_targets_while_json_keeps_the_exact_run() {
         json: false,
         interactive: false,
         details: true,
+        release_alert: None,
     };
     assert_eq!(ui.follow_up(&results, false).text(), "Details: pup status --details");
     assert_eq!(
@@ -201,6 +202,32 @@ fn previous_column_is_hidden_when_every_previous_result_is_unloaded() {
     results.history_loaded = false;
     let frame = Browser::new(&results).frame(&results, 120, 36, false);
     assert!(frame.iter().take(5).all(|line| !line.contains("PREVIOUS")));
+}
+
+#[test]
+fn release_alert_stays_visible_while_browsing_without_hiding_controls() {
+    let results = results(48);
+    for message in [
+        "Installation is changing.\nSee https://example.test/install.".to_owned(),
+        "A long notice. ".repeat(500),
+    ] {
+        for (width, height) in [(60, 20), (80, 24), (120, 36)] {
+            let mut browser = Browser::new(&results);
+            browser.release_alert = Some(message.clone());
+            for _ in 0..2 {
+                let lines = plain_frame(&mut browser, &results, width, height);
+                assert_eq!(lines.len(), height);
+                assert!(lines.iter().all(|line| measure_text_width(line) <= width));
+                let text = lines.join("\n");
+                assert_eq!(text.matches("Pup notice:").count(), 1);
+                assert!(text.contains("Esc/Ctrl+C detach"), "{text}");
+                if message.starts_with("Installation") {
+                    assert!(text.contains("https://example.test/install."));
+                }
+                browser.key(KeyCode::Down, &results, height, width);
+            }
+        }
+    }
 }
 
 #[test]
@@ -758,6 +785,7 @@ async fn noninteractive_observation_finishes_at_verdict_with_optional_updates_pe
         json: false,
         interactive: false,
         details: false,
+        release_alert: None,
     };
     assert!(results.finished());
     assert!(

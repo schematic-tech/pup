@@ -31,15 +31,14 @@ async fn main() -> ExitCode {
     let cli = match Cli::try_parse().and_then(Cli::validate) {
         Ok(cli) => cli,
         Err(error) => {
-            if std::env::args_os().any(|argument| argument == "--json") && error.use_stderr() {
-                Ui::new(true).json_value(
+            let mut ui = Ui::new(std::env::args_os().any(|argument| argument == "--json"));
+            updates::on_startup(&mut ui);
+            if ui.json && error.use_stderr() {
+                ui.json_value(
                     "error",
                     &serde_json::json!({"code": "invalid_arguments", "message": error.to_string()}),
                 );
                 return ExitCode::from(2);
-            }
-            if !error.use_stderr() {
-                updates::on_startup(&Ui::new(std::env::args_os().any(|argument| argument == "--json")));
             }
             error.exit();
         }
@@ -51,7 +50,7 @@ async fn main() -> ExitCode {
     }
     let mut ui = Ui::new(cli.json);
     if !matches!(cli.command, Command::Daemon) {
-        updates::on_startup(&ui);
+        updates::on_startup(&mut ui);
     }
     ui.details = match &cli.command {
         Command::Check(args) => args.details,

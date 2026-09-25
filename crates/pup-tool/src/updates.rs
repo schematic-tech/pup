@@ -10,6 +10,7 @@ use std::{
 use anyhow::{Result, ensure};
 use fs2::FileExt;
 use semver::Version;
+use serde::Deserialize;
 
 use crate::{config::StateStore, output::Ui};
 
@@ -21,31 +22,69 @@ const CACHE_FILE: &str = "releases.json";
 const ATTEMPT_FILE: &str = "last-attempt";
 const LOCK_FILE: &str = "refresh.lock";
 
-pub fn on_startup(ui: &Ui) {
-    if std::env::var_os("PUP_NO_UPDATE_CHECK").is_some() {
-        return;
+#[derive(Deserialize)]
+struct Release {
+    version: Version,
+    #[serde(default, deserialize_with = "deserialize_alert")]
+    alert: Option<String>,
+}
+
+fn deserialize_alert<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<String>, D::Error> {
+    String::deserialize(deserializer).map(Some)
+}
+
+impl Release {
+    fn is_newer(&self, current: &str) -> bool {
+        // Build metadata does not change precedence; stable clients stay off prereleases.
+        self.version.pre.is_empty()
+            && Version::parse(current).is_ok_and(|current| self.version.cmp_precedence(&current).is_gt())
     }
+}
+
+pub fn on_startup(ui: &mut Ui) {
     let Ok(store) = StateStore::discover() else {
         return;
     };
     let directory = store.profile_directory().join("updates");
     // The foreground only reads the last complete cache. All network work belongs
     // to a short-lived child, so a slow or unavailable server cannot delay Pup.
-    if let Some(latest) = cached_update(&directory, env!("CARGO_PKG_VERSION")) {
-        ui.update_available(env!("CARGO_PKG_VERSION"), &latest);
+    if let Some(release) = cached_release(&directory) {
+        // An operator notice may replace the installation instructions themselves.
+        let alerted = release
+            .alert
+            .as_deref()
+            .is_some_and(|message| ui.release_alert(message));
+        if !alerted && std::env::var_os("PUP_NO_UPDATE_CHECK").is_none() && release.is_newer(env!("CARGO_PKG_VERSION"))
+        {
+            ui.update_available(env!("CARGO_PKG_VERSION"), &release.version);
+        }
     }
     let _ = spawn_refresh(&directory);
 }
 
-fn parse_manifest(bytes: &[u8]) -> Result<BTreeMap<String, String>> {
-    let releases: BTreeMap<String, String> = serde_json::from_slice(bytes)?;
-    for version in releases.values() {
-        Version::parse(version)?;
+fn parse_manifest(bytes: &[u8]) -> Result<BTreeMap<String, Release>> {
+    // Existing local caches and a manifest awaiting publication can use the old shape.
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Entry {
+        Release(Release),
+        Version(Version),
     }
-    Ok(releases)
+    Ok(serde_json::from_slice::<BTreeMap<String, Entry>>(bytes)?
+        .into_iter()
+        .map(|(tool, entry)| {
+            (
+                tool,
+                match entry {
+                    Entry::Release(release) => release,
+                    Entry::Version(version) => Release { version, alert: None },
+                },
+            )
+        })
+        .collect())
 }
 
-fn cached_update(directory: &Path, current: &str) -> Option<Version> {
+fn cached_release(directory: &Path) -> Option<Release> {
     let mut bytes = Vec::new();
     File::open(directory.join(CACHE_FILE))
         .ok()?
@@ -55,12 +94,7 @@ fn cached_update(directory: &Path, current: &str) -> Option<Version> {
     if bytes.len() as u64 > MAX_MANIFEST_BYTES {
         return None;
     }
-    let releases = parse_manifest(&bytes).ok()?;
-    let latest = Version::parse(releases.get("pup-tool")?).ok()?;
-    let current = Version::parse(current).ok()?;
-    // Build metadata does not change SemVer precedence. A published prerelease
-    // should not invite stable users onto a prerelease channel.
-    (latest.pre.is_empty() && latest.cmp_precedence(&current).is_gt()).then_some(latest)
+    parse_manifest(&bytes).ok()?.remove("pup-tool")
 }
 
 fn fresh(path: &Path) -> bool {
@@ -209,30 +243,51 @@ mod tests {
             ("0.5.0", "0.5.0-rc.1", true),
             ("0.6.0-rc.1", "0.5.0", false),
         ] {
-            fs::write(
-                directory.path().join(CACHE_FILE),
-                format!(r#"{{"pup-tool":"{latest}"}}"#),
-            )
-            .unwrap();
-            assert_eq!(
-                cached_update(directory.path(), current).is_some(),
-                expected,
-                "{latest} / {current}"
-            );
+            for entry in [serde_json::json!(latest), serde_json::json!({"version": latest})] {
+                fs::write(
+                    directory.path().join(CACHE_FILE),
+                    serde_json::json!({"pup-tool": entry}).to_string(),
+                )
+                .unwrap();
+                assert_eq!(
+                    cached_release(directory.path()).unwrap().is_newer(current),
+                    expected,
+                    "{latest} / {current}"
+                );
+            }
         }
         for invalid in [
             "{",
             "[]",
             r#"{"pup-tool":"latest"}"#,
             r#"{"pup-tool":7}"#,
+            r#"{"pup-tool":{"alert":"notice"}}"#,
+            r#"{"pup-tool":{"version":"latest"}}"#,
+            r#"{"pup-tool":{"version":"0.5.0","alert":null}}"#,
+            r#"{"pup-tool":{"version":"0.5.0","alert":7}}"#,
             r#"{"other-tool":"999.0.0"}"#,
             r#"{"pup-tool":"9.0.0\nrun this"}"#,
         ] {
             fs::write(directory.path().join(CACHE_FILE), invalid).unwrap();
-            assert!(cached_update(directory.path(), "0.5.0").is_none());
+            assert!(cached_release(directory.path()).is_none());
         }
         fs::remove_file(directory.path().join(CACHE_FILE)).unwrap();
-        assert!(cached_update(directory.path(), "0.5.0").is_none());
+        assert!(cached_release(directory.path()).is_none());
+    }
+
+    #[test]
+    fn alerts_are_independent_of_version_precedence() {
+        for version in ["0.4.0", "0.5.0", "0.6.0-rc.1", "0.6.0"] {
+            let manifest = serde_json::json!({
+                "pup-tool": {"version": version, "alert": "Installation is changing.", "future": true},
+                "another-tool": "2.0.0"
+            });
+            let mut releases = parse_manifest(manifest.to_string().as_bytes()).unwrap();
+            let release = releases.remove("pup-tool").unwrap();
+            assert_eq!(release.version.to_string(), version);
+            assert_eq!(release.alert.as_deref(), Some("Installation is changing."));
+            assert!(releases["another-tool"].alert.is_none());
+        }
     }
 
     #[test]
@@ -285,7 +340,7 @@ mod tests {
     async fn replaces_a_complete_manifest_and_preserves_cache_during_the_download() {
         let directory = tempfile::tempdir().unwrap();
         let before = stale_cache(directory.path());
-        let after = br#"{"pup-tool":"0.5.0","another-tool":"3.0.0"}"#.to_vec();
+        let after = br#"{"pup-tool":{"version":"0.5.0","alert":"Installation is changing."},"another-tool":{"version":"3.0.0"}}"#.to_vec();
         let (url, server) = server(200, after.clone(), Duration::from_millis(100)).await;
         let refresh = refresh(directory.path(), &url, FETCH_TIMEOUT);
         let reader = async {
@@ -303,12 +358,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn refreshing_without_an_alert_clears_the_cached_notice() {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            directory.path().join(CACHE_FILE),
+            br#"{"pup-tool":{"version":"0.5.0","alert":"Installation is changing."}}"#,
+        )
+        .unwrap();
+        File::options()
+            .write(true)
+            .open(directory.path().join(CACHE_FILE))
+            .unwrap()
+            .set_modified(SystemTime::now() - REFRESH_INTERVAL - Duration::from_secs(1))
+            .unwrap();
+        assert!(cached_release(directory.path()).unwrap().alert.is_some());
+        let (url, server) = server(200, br#"{"pup-tool":{"version":"0.5.0"}}"#.to_vec(), Duration::ZERO).await;
+        refresh(directory.path(), &url, FETCH_TIMEOUT).await.unwrap();
+        server.await.unwrap();
+        assert!(cached_release(directory.path()).unwrap().alert.is_none());
+    }
+
+    #[tokio::test]
     async fn errors_invalid_versions_and_oversized_responses_preserve_previous_cache() {
         for (status, body) in [
             (404, b"not found".to_vec()),
             (500, b"unavailable".to_vec()),
             (200, b"{".to_vec()),
             (200, br#"{"pup-tool":"not-semver"}"#.to_vec()),
+            (200, br#"{"pup-tool":{"version":"0.5.0","alert":false}}"#.to_vec()),
             (200, vec![b' '; usize::try_from(MAX_MANIFEST_BYTES + 1).unwrap()]),
         ] {
             let directory = tempfile::tempdir().unwrap();

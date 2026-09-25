@@ -9,6 +9,99 @@ fn command(profile: &std::path::Path) -> Command {
     command
 }
 
+fn cache_alert(profile: &std::path::Path, version: &str, alert: &str) {
+    let cache = profile.join("updates");
+    fs::create_dir_all(&cache).unwrap();
+    fs::write(
+        cache.join("releases.json"),
+        serde_json::json!({"pup-tool": {"version": version, "alert": alert}}).to_string(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn alerts_appear_once_per_invocation_without_changing_stdout_or_exit_status() {
+    let profile = tempfile::tempdir().unwrap();
+    let message = "Installation is changing.\nSee https://example.test/install for instructions.";
+    let expected = format!("\n  Pup notice\n  {}\n\n", message.replace('\n', "\n  "));
+    // Even an up-to-date installation must show the alert, on every invocation.
+    cache_alert(profile.path(), env!("CARGO_PKG_VERSION"), message);
+    for args in [
+        vec!["--version"],
+        vec!["--help"],
+        vec!["logout", "--json"],
+        vec!["--unknown", "--json"],
+    ] {
+        for _ in 0..2 {
+            let output = command(profile.path())
+                .env("PUP_NO_UPDATE_CHECK", "1")
+                .args(&args)
+                .output()
+                .unwrap();
+            assert_eq!(String::from_utf8(output.stderr).unwrap(), expected);
+            match args[0] {
+                "--version" => assert_eq!(
+                    output.stdout,
+                    concat!("pup ", env!("CARGO_PKG_VERSION"), "\n").as_bytes()
+                ),
+                "--help" => assert!(String::from_utf8(output.stdout).unwrap().contains("Usage:")),
+                _ => {
+                    let response: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+                    assert_eq!(response["type"], if args[0] == "logout" { "success" } else { "error" });
+                }
+            }
+            assert_eq!(output.status.code(), Some(if args[0] == "--unknown" { 2 } else { 0 }));
+        }
+    }
+    let output = command(profile.path()).arg("--unknown").output().unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.starts_with(&expected));
+    assert_eq!(stderr.matches("Pup notice").count(), 1);
+    assert!(stderr.contains("unexpected argument"));
+}
+
+#[test]
+fn active_alert_replaces_the_generic_update_hint_and_cleans_terminal_controls() {
+    let profile = tempfile::tempdir().unwrap();
+    cache_alert(
+        profile.path(),
+        "999.0.0",
+        "\u{1b}[31mInstall instructions\u{1b}[0m\u{7}\r\nhttps://example.test/install",
+    );
+    let output = command(profile.path()).arg("--version").output().unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        "\n  Pup notice\n  Install instructions\n  https://example.test/install\n\n"
+    );
+
+    for alert in ["", " \t\n ", "\u{1b}[31m\u{7}\u{1b}[0m"] {
+        cache_alert(profile.path(), "999.0.0", alert);
+        let output = command(profile.path()).arg("--version").output().unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(!stderr.contains("Pup notice"));
+        assert!(stderr.contains("Pup 999.0.0 is available"));
+    }
+}
+
+#[test]
+fn detached_refresh_does_not_display_alerts_or_spawn_another_worker() {
+    let profile = tempfile::tempdir().unwrap();
+    cache_alert(profile.path(), "999.0.0", "Installation is changing.");
+    let cache = profile.path().join("updates");
+    let output = command(profile.path())
+        .arg("refresh-releases")
+        .arg(&cache)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
+    assert!(!cache.join("last-attempt").exists());
+}
+
 #[test]
 fn cached_notice_is_styled_as_text_on_stderr_and_keeps_json_and_version_output_clean() {
     let profile = tempfile::tempdir().unwrap();
@@ -82,6 +175,7 @@ fn foreground_exits_while_the_detached_worker_is_waiting_on_the_network() {
     let proxy_url = format!("http://{}", proxy.local_addr().unwrap());
     let start = Instant::now();
     let output = command(profile.path())
+        .env("PUP_NO_UPDATE_CHECK", "1")
         .env("HTTPS_PROXY", &proxy_url)
         .env("https_proxy", &proxy_url)
         .env("ALL_PROXY", &proxy_url)

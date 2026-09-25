@@ -106,13 +106,15 @@ impl Fixture {
     }
 
     fn run(&self, args: &[&str]) -> Output {
+        let updates = self.profile.path().join("updates");
+        std::fs::create_dir_all(&updates).unwrap();
+        std::fs::write(updates.join("releases.json"), b"{}").unwrap();
         Command::new(env!("CARGO_BIN_EXE_pup"))
             .args(args)
             .current_dir(self.directory.path())
             .env("PUP_CONFIG_DIR", self.profile.path())
             .env("PUP_ACCESS_TOKEN", &self.key)
             .env_remove("PUP_API_URL")
-            .env("PUP_NO_UPDATE_CHECK", "1")
             .env("PUP_NO_DAEMON", "1")
             .env("TZ", "UTC")
             .env("NO_COLOR", "1")

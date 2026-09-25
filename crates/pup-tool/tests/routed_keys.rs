@@ -10,12 +10,13 @@ use tempfile::TempDir;
 use uuid::Uuid;
 
 fn login(profile: &TempDir, key: &str, extra: &[&str]) -> Output {
+    std::fs::create_dir_all(profile.path().join("updates")).unwrap();
+    std::fs::write(profile.path().join("updates/releases.json"), b"{}").unwrap();
     Command::new(env!("CARGO_BIN_EXE_pup"))
         .args(extra)
         .arg("login")
         .env("PUP_CONFIG_DIR", profile.path())
         .env("PUP_NO_DAEMON", "1")
-        .env("PUP_NO_UPDATE_CHECK", "1")
         .env("PUP_ACCESS_TOKEN", key)
         .env_remove("PUP_API_URL")
         .output()

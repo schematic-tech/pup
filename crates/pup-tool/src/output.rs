@@ -42,6 +42,7 @@ pub struct Ui {
     pub json: bool,
     pub interactive: bool,
     pub details: bool,
+    release_alert: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -342,6 +343,7 @@ impl Ui {
             json,
             interactive,
             details: false,
+            release_alert: None,
         }
     }
 
@@ -423,6 +425,24 @@ impl Ui {
             accent.apply_to(format!("Pup {latest} is available")),
             muted.apply_to(format!("(installed: {current})")),
         );
+    }
+
+    pub fn release_alert(&mut self, message: &str) -> bool {
+        let message = style::clean(message);
+        let message = message.trim();
+        if message.is_empty() {
+            return false;
+        }
+        let heading = Ink::Warning.style().for_stderr().bold();
+        // Let the terminal soft-wrap so copied URLs and commands stay intact.
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "\n  {}\n  {}\n",
+            heading.apply_to("Pup notice"),
+            message.replace('\n', "\n  "),
+        );
+        self.release_alert = Some(message.to_owned());
+        true
     }
 
     fn stderr_lines(lines: &[Line]) {
@@ -807,6 +827,7 @@ pub async fn observe(client: &PupClient, results: &mut Results, mode: Observatio
     let mut terminal = interactive.then(TerminalGuard::enter).transpose()?;
     let mut input = interactive.then(EventStream::new);
     let mut browser = Browser::new(results);
+    browser.release_alert.clone_from(&ui.release_alert);
     browser.configure(ui.details, watching && results.rows.len() == 1 && ui.details);
     let mut timer = tokio::time::interval(Duration::from_millis(120));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);

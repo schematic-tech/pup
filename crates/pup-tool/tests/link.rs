@@ -200,13 +200,15 @@ impl Fixture {
     }
 
     fn pup_in(&self, directory: &Path, args: &[&str]) -> Output {
+        let updates = self.directory.path().join("profile").join("updates");
+        std::fs::create_dir_all(&updates).unwrap();
+        std::fs::write(updates.join("releases.json"), b"{}").unwrap();
         Command::new(env!("CARGO_BIN_EXE_pup"))
             .args(args)
             .env("PUP_CONFIG_DIR", self.directory.path().join("profile"))
             .env("PUP_API_URL", &self.url)
             .env("PUP_ACCESS_TOKEN", "test-key")
             .env("PUP_NO_DAEMON", "1")
-            .env("PUP_NO_UPDATE_CHECK", "1")
             .current_dir(directory)
             .output()
             .unwrap()

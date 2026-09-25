@@ -14,6 +14,7 @@ pub(super) enum Mode {
 pub(super) struct Browser {
     pub mode: Mode,
     pub tick: usize,
+    pub release_alert: Option<String>,
     details: bool,
     can_go_back: bool,
     row: usize,
@@ -31,6 +32,7 @@ impl Browser {
         Self {
             mode: Mode::List,
             tick: 0,
+            release_alert: None,
             details: false,
             can_go_back: false,
             row: 0,
@@ -162,6 +164,22 @@ impl Browser {
         }
         let content_width = width.saturating_sub(4).max(1);
         let mut lines = Vec::new();
+        if let Some(message) = &self.release_alert {
+            lines = Line::default()
+                .push("Pup notice: ", Ink::Warning, true)
+                .plain(message)
+                .wrapped(content_width);
+            // The complete notice remains in scrollback after leaving the alternate screen.
+            let limit = (height / 4).max(1);
+            if lines.len() > limit {
+                lines.truncate(limit);
+                lines[limit - 1] = lines[limit - 1]
+                    .clone()
+                    .cell(content_width.saturating_sub(1))
+                    .plain("…");
+            }
+            lines.push(Line::default());
+        }
         if results.rows.is_empty() {
             lines.push(Line::new("No checks yet. Run pup check to start."));
             lines.push(self.close_hint(results));
