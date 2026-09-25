@@ -63,25 +63,7 @@ pub fn on_startup(ui: &mut Ui) {
 }
 
 fn parse_manifest(bytes: &[u8]) -> Result<BTreeMap<String, Release>> {
-    // Existing local caches and a manifest awaiting publication can use the old shape.
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Entry {
-        Release(Release),
-        Version(Version),
-    }
-    Ok(serde_json::from_slice::<BTreeMap<String, Entry>>(bytes)?
-        .into_iter()
-        .map(|(tool, entry)| {
-            (
-                tool,
-                match entry {
-                    Entry::Release(release) => release,
-                    Entry::Version(version) => Release { version, alert: None },
-                },
-            )
-        })
-        .collect())
+    Ok(serde_json::from_slice(bytes)?)
 }
 
 fn cached_release(directory: &Path) -> Option<Release> {
@@ -220,7 +202,7 @@ mod tests {
     }
 
     fn stale_cache(directory: &Path) -> Vec<u8> {
-        let bytes = br#"{"sch-tool":"0.4.2","another-tool":"2.0.0"}"#.to_vec();
+        let bytes = br#"{"sch-tool":{"version":"0.4.2"},"another-tool":{"version":"2.0.0"}}"#.to_vec();
         fs::write(directory.join(CACHE_FILE), &bytes).unwrap();
         OpenOptions::new()
             .write(true)
@@ -243,29 +225,29 @@ mod tests {
             ("0.5.0", "0.5.0-rc.1", true),
             ("0.6.0-rc.1", "0.5.0", false),
         ] {
-            for entry in [serde_json::json!(latest), serde_json::json!({"version": latest})] {
-                fs::write(
-                    directory.path().join(CACHE_FILE),
-                    serde_json::json!({"sch-tool": entry}).to_string(),
-                )
-                .unwrap();
-                assert_eq!(
-                    cached_release(directory.path()).unwrap().is_newer(current),
-                    expected,
-                    "{latest} / {current}"
-                );
-            }
+            fs::write(
+                directory.path().join(CACHE_FILE),
+                serde_json::json!({"sch-tool": {"version": latest}}).to_string(),
+            )
+            .unwrap();
+            assert_eq!(
+                cached_release(directory.path()).unwrap().is_newer(current),
+                expected,
+                "{latest} / {current}"
+            );
         }
         for invalid in [
             "{",
             "[]",
+            r#"{"sch-tool":"0.5.0"}"#,
             r#"{"sch-tool":"latest"}"#,
             r#"{"sch-tool":7}"#,
             r#"{"sch-tool":{"alert":"notice"}}"#,
             r#"{"sch-tool":{"version":"latest"}}"#,
             r#"{"sch-tool":{"version":"0.5.0","alert":null}}"#,
             r#"{"sch-tool":{"version":"0.5.0","alert":7}}"#,
-            r#"{"other-tool":"999.0.0"}"#,
+            r#"{"other-tool":{"version":"999.0.0"}}"#,
+            r#"{"pup-tool":{"version":"999.0.0"}}"#,
             r#"{"sch-tool":"9.0.0\nrun this"}"#,
         ] {
             fs::write(directory.path().join(CACHE_FILE), invalid).unwrap();
@@ -280,7 +262,7 @@ mod tests {
         for version in ["0.4.0", "0.5.0", "0.6.0-rc.1", "0.6.0"] {
             let manifest = serde_json::json!({
                 "sch-tool": {"version": version, "alert": "Installation is changing.", "future": true},
-                "another-tool": "2.0.0"
+                "another-tool": {"version": "2.0.0"}
             });
             let mut releases = parse_manifest(manifest.to_string().as_bytes()).unwrap();
             let release = releases.remove("sch-tool").unwrap();
@@ -384,6 +366,7 @@ mod tests {
             (404, b"not found".to_vec()),
             (500, b"unavailable".to_vec()),
             (200, b"{".to_vec()),
+            (200, br#"{"sch-tool":"0.5.0"}"#.to_vec()),
             (200, br#"{"sch-tool":"not-semver"}"#.to_vec()),
             (200, br#"{"sch-tool":{"version":"0.5.0","alert":false}}"#.to_vec()),
             (200, vec![b' '; usize::try_from(MAX_MANIFEST_BYTES + 1).unwrap()]),

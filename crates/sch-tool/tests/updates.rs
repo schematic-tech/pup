@@ -109,7 +109,7 @@ fn cached_notice_is_styled_as_text_on_stderr_and_keeps_json_and_version_output_c
     fs::create_dir(&cache).unwrap();
     fs::write(
         cache.join("releases.json"),
-        br#"{"sch-tool":"999.0.0","another-tool":"1.0.0"}"#,
+        br#"{"sch-tool":{"version":"999.0.0"},"another-tool":{"version":"1.0.0"}}"#,
     )
     .unwrap();
     let output = command(profile.path()).arg("--version").output().unwrap();
@@ -145,7 +145,12 @@ fn missing_or_corrupt_cache_is_silent_and_a_failed_refresh_does_not_spawn_again_
     let cache = profile.path().join("updates");
     fs::create_dir(&cache).unwrap();
     fs::write(cache.join("last-attempt"), b"").unwrap();
-    for contents in [None, Some("<error>offline</error>"), Some(r#"{"sch-tool":"0.0.1"}"#)] {
+    for contents in [
+        None,
+        Some("<error>offline</error>"),
+        Some(r#"{"sch-tool":{"version":"0.0.1"}}"#),
+        Some(r#"{"sch-tool":"999.0.0"}"#),
+    ] {
         if let Some(contents) = contents {
             fs::write(cache.join("releases.json"), contents).unwrap();
         }

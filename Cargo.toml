@@ -3,7 +3,7 @@ members = ["crates/pup-types", "crates/sch-tool"]
 resolver = "3"
 
 [workspace.package]
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
@@ -12,7 +12,7 @@ documentation = "https://docs.schematic.tech/pup/"
 rust-version = "1.97"
 
 [workspace.dependencies]
-pup-types = { version = "0.7.0", path = "crates/pup-types" }
+pup-types = { version = "0.7.1", path = "crates/pup-types" }
 
 anyhow = "1"
 base64 = "0.22"
