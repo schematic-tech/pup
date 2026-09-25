@@ -183,6 +183,31 @@ impl PupClient {
         self.get(api::AUTH_WHOAMI).await
     }
 
+    pub async fn usage(&self, query: &pup_types::usage::UsageQuery) -> Result<pup_types::usage::UsageReport> {
+        let request = self
+            .http
+            .get(self.url(api::USAGE))
+            .query(query)
+            .timeout(Duration::from_secs(25));
+        let response = self
+            .authorize(request)
+            .send()
+            .await
+            .context("could not load Pup usage; retry `pup usage`")?;
+        if response.status() == StatusCode::UNAUTHORIZED {
+            bail!("your Pup credential could not be verified\n  Run `pup login`, then retry `pup usage`.")
+        }
+        let response = if response.status().is_success() {
+            response
+        } else {
+            self.service_error(response).await?
+        };
+        response
+            .json()
+            .await
+            .context("the Pup API returned an invalid usage report")
+    }
+
     pub fn with_source_progress(&self, progress: tokio::sync::watch::Sender<SourceProgress>) -> Self {
         let mut client = self.clone();
         client.progress = Some(progress);

@@ -1,0 +1,31 @@
+{
+  "snapshot": "00000000-0000-0000-0000-000000000099",
+  "asOf": "2026-09-25T00:42:00Z",
+  "start": "2026-08-26T14:00:00Z",
+  "end": "2026-09-25T00:42:00Z",
+  "repositories": [
+    { "id": "00000000-0000-0000-0000-000000000001", "name": "payments" },
+    { "id": "00000000-0000-0000-0000-000000000002", "name": "parser" }
+  ],
+  "checks": [
+    { "id": "payments:42", "number": 42, "repositoryId": "00000000-0000-0000-0000-000000000001", "name": "amounts_stay_positive", "path": "tests/payments.py", "revision": "abc1234", "startedAt": "2026-09-25T00:40:00Z", "status": "pass", "periodTokens": 128400, "usagePending": false },
+    { "id": "payments:41", "number": 41, "repositoryId": "00000000-0000-0000-0000-000000000001", "name": "refunds_are_bounded", "path": "tests/payments.py", "revision": "abc1234", "startedAt": "2026-09-25T00:30:00Z", "status": "fail", "periodTokens": 92100, "usagePending": false },
+    { "id": "parser:18", "number": 18, "repositoryId": "00000000-0000-0000-0000-000000000002", "name": "roundtrip", "path": "tests/parser.rs", "revision": "def5678", "startedAt": "2026-09-25T00:20:00Z", "status": "checking", "periodTokens": 8240, "usagePending": true }
+  ],
+  "buckets": [{ "start": "2026-09-24T14:00:00Z", "end": "2026-09-25T14:00:00Z", "tokens": 228740, "current": true }],
+  "totalTokens": 228740,
+  "totalChecks": 3,
+  "page": 1,
+  "pageSize": 10,
+  "usageAvailable": true,
+  "pending": true,
+  "quota": {
+    "asOf": "2026-09-25T00:42:00Z",
+    "windowStart": "2026-09-18T00:42:00Z",
+    "limit": 1000000000,
+    "used": 250000000,
+    "remaining": 750000000,
+    "exhausted": false,
+    "nextAvailableAt": "2026-09-26T00:30:00Z"
+  }
+}

@@ -6,6 +6,7 @@ mod presentation;
 mod progress;
 mod prompt;
 mod style;
+mod usage;
 
 use browser::Browser;
 use presentation::{activity, status};

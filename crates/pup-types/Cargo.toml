@@ -10,6 +10,9 @@ repository.workspace = true
 documentation.workspace = true
 include = ["/src", "/README.md", "/LICENSE*"]
 
+[features]
+typescript = ["dep:ts-rs"]
+
 [dependencies]
 base64.workspace = true
 url.workspace = true
@@ -18,6 +21,7 @@ hex.workspace = true
 serde.workspace = true
 sha2.workspace = true
 uuid.workspace = true
+ts-rs = { version = "12", optional = true, features = ["chrono-impl", "uuid-impl"] }
 
 [dev-dependencies]
 serde_json.workspace = true

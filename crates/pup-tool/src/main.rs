@@ -7,6 +7,7 @@ mod discovery;
 mod git;
 mod output;
 mod updates;
+mod usage;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -86,6 +87,7 @@ async fn run(cli: Cli, ui: &Ui) -> Result<u8> {
         Command::Unlink { path } => unlink_repository(&store, path.as_deref(), ui)?,
         Command::Check(args) => return check_command(&store, &api_url, args, ui).await,
         Command::Status(args) => check_status(&store, &api_url, args, ui).await?,
+        Command::Usage(args) => usage::run(&store, &api_url, &args, ui).await?,
         Command::Cancel(args) => return cancel_checks(&store, &api_url, &args.target, ui).await,
         Command::Fix(args) => {
             if !args.dry_run && !args.yes && !ui.interactive {

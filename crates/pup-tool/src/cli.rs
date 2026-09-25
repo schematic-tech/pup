@@ -55,6 +55,8 @@ pub enum Command {
     Check(CheckArgs),
     /// Inspect existing checks without starting work or syncing source.
     Status(StatusArgs),
+    /// Show account quota, token usage, and recent supertest checks.
+    Usage(UsageArgs),
     /// Cancel shared checks for all observers by path, run, or check number.
     Cancel(CancelArgs),
     /// Apply a proposed fix after confirmation, or preview it with --dry-run.
@@ -63,6 +65,16 @@ pub enum Command {
     Daemon,
     #[command(hide = true)]
     RefreshReleases { directory: PathBuf },
+}
+
+#[derive(Debug, Args)]
+pub struct UsageArgs {
+    /// Activity period in your local time zone. Quota always covers the rolling seven days.
+    #[arg(long, value_parser = ["today", "7d", "30d"], default_value = "30d")]
+    pub period: String,
+    /// Filter activity by repository name or ID. Use . for the current linked repository.
+    #[arg(long, value_name = "NAME|ID|.")]
+    pub repo: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -181,7 +193,9 @@ mod tests {
             .collect();
         assert_eq!(
             names,
-            ["login", "logout", "link", "unlink", "check", "status", "cancel", "fix"]
+            [
+                "login", "logout", "link", "unlink", "check", "status", "usage", "cancel", "fix"
+            ]
         );
         assert!(Cli::try_parse_from(["pup", "repo", "link"]).is_err());
         assert!(Cli::try_parse_from(["pup", "completion", "zsh"]).is_err());
