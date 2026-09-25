@@ -108,7 +108,7 @@ fn single(results: &Results, entry: &Entry, check: &pup_types::Check) -> Vec<Lin
             Line::default(),
             Line::default()
                 .muted("Details: ")
-                .push(format!("pup status --check {}", check.number), Ink::Accent, true),
+                .push(format!("sch status --check {}", check.number), Ink::Accent, true),
         ]);
     }
     lines

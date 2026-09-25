@@ -549,7 +549,7 @@ impl Fixture {
         let updates = self.directory.path().join("config").join("updates");
         std::fs::create_dir_all(&updates).unwrap();
         std::fs::write(updates.join("releases.json"), b"{}").unwrap();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_pup"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_sch"));
         command
             .args(args)
             .current_dir(self.directory.path().join("repo"))
@@ -604,7 +604,7 @@ fn link_prints_a_compact_completion_and_preserves_the_json_contract() {
         assert_eq!(
             String::from_utf8(output.stdout).unwrap(),
             format!(
-                "  ✓ Linked text-tools · {} · {}\n  Next: pup check\n",
+                "  ✓ Linked text-tools · {} · {}\n  Next: sch check\n",
                 branch.unwrap_or("detached HEAD"),
                 &fixture.head[..7]
             )
@@ -1198,9 +1198,9 @@ mod terminal {
                 &mut master,
                 &mut text,
                 if active {
-                    "Watch: pup status --watch"
+                    "Watch: sch status --watch"
                 } else {
-                    "Details: pup status"
+                    "Details: sch status"
                 },
             );
             let receipt = text.rsplit("\x1b[?1049l").next().unwrap();
@@ -1408,7 +1408,7 @@ mod terminal {
             read_until(&mut master, &mut text, "Checking the source.");
             read_until(&mut master, &mut text, "A fix proposal may still arrive.");
             let notice = match final_state {
-                "available" => "pup fix --check 42",
+                "available" => "sch fix --check 42",
                 "unavailable" => "No fix proposal available.",
                 _ => "A fix proposal may still arrive.",
             };
@@ -1424,7 +1424,7 @@ mod terminal {
             if final_state == "pending" {
                 read_until(&mut master, &mut receipt, "--watch");
                 assert!(
-                    console::strip_ansi_codes(&receipt).contains("Watch: pup status --check 42 --watch"),
+                    console::strip_ansi_codes(&receipt).contains("Watch: sch status --check 42 --watch"),
                     "{receipt}"
                 );
             }
@@ -1455,7 +1455,7 @@ mod terminal {
                 if args.contains(&"--json") {
                     "\"type\":\"results\""
                 } else {
-                    "pup fix --check 42"
+                    "sch fix --check 42"
                 },
             );
             assert_eq!(wait_for_exit(&mut process).code(), Some(1));
@@ -1704,7 +1704,7 @@ mod terminal {
             "{after}"
         );
         assert!(
-            after.contains(&format!("pup status --check {CHECK} --watch")),
+            after.contains(&format!("sch status --check {CHECK} --watch")),
             "{after}"
         );
         assert!(!after.contains(RUN));
@@ -1785,7 +1785,7 @@ mod terminal {
         assert!(last_frame.contains("Esc/Ctrl+C detach"));
         assert!(process.0.try_wait().unwrap().is_none());
         master.write_all(b"\x03").unwrap();
-        read_until(&mut master, &mut text, &format!("pup status --check {CHECK} --watch"));
+        read_until(&mut master, &mut text, &format!("sch status --check {CHECK} --watch"));
         assert!(process.0.wait().unwrap().success());
         assert!(
             tcgetattr(&slave)
@@ -1820,7 +1820,7 @@ mod terminal {
         read_until(&mut master, &mut text, "Enter y or n");
         assert_eq!(fixture.source(), SOURCE, "invalid words must not be accepted as y");
         master.write_all(b"\x15YES\r").unwrap();
-        read_until(&mut master, &mut text, "pup check test.py::law");
+        read_until(&mut master, &mut text, "sch check test.py::law");
         assert!(process.0.wait().unwrap().success());
         assert!(fixture.source().contains("assert 1 == 1"));
         assert!(
@@ -1960,7 +1960,7 @@ mod terminal {
                 &mut master,
                 &mut text,
                 if applies {
-                    "pup check test.py::law"
+                    "sch check test.py::law"
                 } else {
                     "No changes made."
                 },
@@ -2005,7 +2005,7 @@ mod terminal {
                 if edit_during_prompt {
                     "No fix was applied"
                 } else {
-                    "pup check test.py::law"
+                    "sch check test.py::law"
                 },
             );
             assert_eq!(
@@ -2092,7 +2092,7 @@ fn fix_default_preview_is_compact_and_details_and_json_preserve_the_proposal() {
             assert_eq!(text.contains("Suggested validation"), details);
             assert_eq!(text.contains("Run the regression suite."), details);
             assert!(text.contains("assert True") && text.contains("assert 1 == 1"));
-            assert!(!text.contains("fail") && !text.contains("pup ·"));
+            assert!(!text.contains("fail") && !text.contains("sch ·"));
             let progress = String::from_utf8_lossy(&output.stderr);
             assert!(progress.contains("Fetching fix proposal"));
             assert!(!progress.contains("Waiting for") && !progress.contains("Preparing a fix"));
@@ -2160,7 +2160,7 @@ fn fix_completion_rechecks_the_specific_supertest_from_the_current_directory() {
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(
         text.ends_with(
-            "  ✓ Applied · 1 file changed\n  Changes are uncommitted.\n\n  Next: pup check ../test.py::law\n"
+            "  ✓ Applied · 1 file changed\n  Changes are uncommitted.\n\n  Next: sch check ../test.py::law\n"
         ),
         "{text}"
     );
@@ -2617,7 +2617,7 @@ fn noninteractive_checks_finish_at_verdict_even_when_a_fix_is_pending() {
             assert_eq!(result["data"]["rows"][0]["current"]["updates_pending"], true);
         } else {
             assert!(text.contains("A fix proposal may still arrive."));
-            assert!(text.contains("Watch: pup status --check 42 --watch"));
+            assert!(text.contains("Watch: sch status --check 42 --watch"));
         }
     }
 }
@@ -3072,7 +3072,7 @@ fn detached_receipts_preserve_commands_and_cached_results_keep_acceptance_exit_c
     assert!(receipt.status.success());
     let receipt = String::from_utf8_lossy(&receipt.stdout);
     assert_eq!(receipt.matches("Accepted").count(), 1);
-    assert!(receipt.contains(&format!("Watch: pup status --check {CHECK} --watch --details\n")));
+    assert!(receipt.contains(&format!("Watch: sch status --check {CHECK} --watch --details\n")));
     for id in [RUN, WORKSPACE, REVISION] {
         assert!(!receipt.contains(id));
     }
@@ -3083,7 +3083,7 @@ fn detached_receipts_preserve_commands_and_cached_results_keep_acceptance_exit_c
     assert_eq!(json["data"]["run"]["id"], RUN);
     assert_eq!(
         json["data"]["resume_command"],
-        format!("pup status --run {RUN} --watch")
+        format!("sch status --run {RUN} --watch")
     );
     let reopened = live.run(&["status", "--check", CHECK]);
     assert!(reopened.status.success());
@@ -3129,7 +3129,7 @@ fn cancel_waits_for_confirmation_and_matches_the_watching_terminal() {
     let text = String::from_utf8_lossy(&output.stdout);
     assert_eq!(
         text,
-        "  ○ canceled · law · #42\n\n  To check again: pup check test.py::law\n"
+        "  ○ canceled · law · #42\n\n  To check again: sch check test.py::law\n"
     );
     assert!(!text.contains("checking"));
     let watcher = fixture.run(&["check", "test.py::law"]);

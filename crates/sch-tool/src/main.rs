@@ -171,12 +171,12 @@ async fn fix_command(store: &StateStore, api_url: &str, args: FixArgs, ui: &Ui) 
                 "Preview only: {error}\n  Recheck your current source before requesting another fix."
             ));
         } else {
-            ui.notice(format!("Preview only. Apply with `pup fix --check {}`.", check.number));
+            ui.notice(format!("Preview only. Apply with `sch fix --check {}`.", check.number));
         }
         return Ok(());
     }
     if let Some(error) = &prepared.apply_error {
-        bail!("{error}\n  Recheck the current source with `pup check --dirty` before requesting another fix.")
+        bail!("{error}\n  Recheck the current source with `sch check --dirty` before requesting another fix.")
     }
     apply_fix(&git, &args, fix, &check, ui, prepared).await
 }
@@ -630,7 +630,7 @@ async fn submit_checks(
                 "Waiting for the previous check to finish canceling before starting a new attempt...".into()
             ));
         }),
-        "Stopped waiting for check acceptance; any accepted remote work continues. Run pup check again to recover this submission.",
+        "Stopped waiting for check acceptance; any accepted remote work continues. Run sch check again to recover this submission.",
     ).await
 }
 
@@ -796,11 +796,11 @@ async fn latest_run_problems(
     workspace: Uuid,
     selector: &str,
 ) -> Result<HashSet<(String, String)>> {
-    // Match plain `pup status`: a path narrows this run, never selects an older run.
+    // Match plain `sch status`: a path narrows this run, never selects an older run.
     let latest = match client.latest_submission(workspace, None).await {
         Ok(latest) => latest,
         Err(error) if api::is_not_found(&error) => {
-            bail!("no previous run to recheck\n  Run `pup check` without `--problems` first.")
+            bail!("no previous run to recheck\n  Run `sch check` without `--problems` first.")
         }
         Err(error) => return Err(error).context("could not retrieve the latest run"),
     };
@@ -1040,7 +1040,7 @@ fn authenticated_client(api_url: &str, state: &LocalState) -> Result<api::PupCli
             let token = state_store_api_key(state)?;
             client_for_api_key(api_url, &token)
         }
-        None => bail!("authentication is required\n  Run `pup login`, then retry."),
+        None => bail!("authentication is required\n  Run `sch login`, then retry."),
     }
 }
 
@@ -1057,7 +1057,7 @@ fn state_store_api_key(_state: &LocalState) -> Result<String> {
     let store = StateStore::discover()?;
     store
         .load_api_key()?
-        .with_context(|| "Pup API key is missing; run `pup login` again")
+        .with_context(|| "Pup API key is missing; run `sch login` again")
 }
 
 fn local_context(store: &StateStore, path: Option<&Path>) -> Result<(LocalState, LocalRepository, git::GitRepository)> {
@@ -1066,7 +1066,7 @@ fn local_context(store: &StateStore, path: Option<&Path>) -> Result<(LocalState,
     let git = git::GitRepository::discover(&directory)?;
     let local = find_repository(&state, &git.root).cloned().with_context(|| {
         format!(
-            "repository is not linked\n  Run `pup link .` from {}.",
+            "repository is not linked\n  Run `sch link .` from {}.",
             git.root.display()
         )
     })?;

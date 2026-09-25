@@ -172,14 +172,14 @@ impl Results {
         if let [row] = self.rows.as_slice()
             && let Some(check) = &row.current
         {
-            return format!("pup status --check {}", check.number);
+            return format!("sch status --check {}", check.number);
         }
         if self.run.is_some() && self.selector == "." {
-            return "pup status".into();
+            return "sch status".into();
         }
         let current = std::env::current_dir().and_then(|path| path.canonicalize());
         let selector = self.command_selector(current.as_deref().unwrap_or(&self.repository_root));
-        format!("pup status {}", shell_quote(&selector))
+        format!("sch status {}", shell_quote(&selector))
     }
 
     fn command_selector(&self, current: &Path) -> String {
@@ -307,7 +307,7 @@ impl Results {
     fn json_data(&self, include_history: bool) -> serde_json::Value {
         serde_json::json!({
             "repository": self.repository, "workspace_id": self.workspace_id,
-            "resume_command": format!("pup status {} --watch", self.json_target()), "run": self.run, "source": self.head, "selector": self.selector,
+            "resume_command": format!("sch status {} --watch", self.json_target()), "run": self.run, "source": self.head, "selector": self.selector,
             "rows": self.rows,
             "history": if include_history { Some(&self.history) } else { None },
             "next_before": self.next_before,
@@ -324,7 +324,7 @@ impl Results {
         );
         Line::default()
             .muted("To check again: ")
-            .push(format!("pup check {}", shell_quote(&selector)), Ink::Accent, true)
+            .push(format!("sch check {}", shell_quote(&selector)), Ink::Accent, true)
             .soft_wrap()
     }
 }
@@ -421,8 +421,8 @@ impl Ui {
         let muted = Ink::Muted.style().for_stderr();
         let _ = writeln!(
             std::io::stderr().lock(),
-            "\n  {} {}\n  curl -fsSL https://get.schematic.tech/pup.sh | bash\n",
-            accent.apply_to(format!("Pup {latest} is available")),
+            "\n  {} {}\n  curl -fsSL https://get.schematic.tech/cli.sh | sh\n",
+            accent.apply_to(format!("Schematic CLI {latest} is available")),
             muted.apply_to(format!("(installed: {current})")),
         );
     }
@@ -438,7 +438,7 @@ impl Ui {
         let _ = writeln!(
             std::io::stderr().lock(),
             "\n  {}\n  {}\n",
-            heading.apply_to("Pup notice"),
+            heading.apply_to("Schematic CLI notice"),
             message.replace('\n', "\n  "),
         );
         self.release_alert = Some(message.to_owned());
@@ -465,7 +465,7 @@ impl Ui {
                         head.branch.as_deref().unwrap_or("detached HEAD"),
                         head.short_oid()
                     )),
-                Line::default().muted("Next: ").push("pup check", Ink::Accent, true),
+                Line::default().muted("Next: ").push("sch check", Ink::Accent, true),
             ]);
         }
     }
@@ -526,9 +526,9 @@ impl Ui {
         let argument = shell_quote(&selector);
         let command = Line::default()
             .muted("Next: ")
-            .push(format!("pup check {argument}"), Ink::Accent, true);
+            .push(format!("sch check {argument}"), Ink::Accent, true);
         if command.width() > Self::width().saturating_sub(4) {
-            Self::print_lines(&[Line::default().muted("Next: ").push("pup check \\", Ink::Accent, true)]);
+            Self::print_lines(&[Line::default().muted("Next: ").push("sch check \\", Ink::Accent, true)]);
             let argument = Line::new("  ").push(argument, Ink::Accent, true);
             // Let the terminal soft-wrap exceptionally long arguments. Inserting a hard
             // newline inside a quoted filename would change a copied command's meaning.

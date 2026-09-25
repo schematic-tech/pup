@@ -109,7 +109,7 @@ impl Fixture {
         let updates = self.profile.path().join("updates");
         std::fs::create_dir_all(&updates).unwrap();
         std::fs::write(updates.join("releases.json"), b"{}").unwrap();
-        Command::new(env!("CARGO_BIN_EXE_pup"))
+        Command::new(env!("CARGO_BIN_EXE_sch"))
             .args(args)
             .current_dir(self.directory.path())
             .env("PUP_CONFIG_DIR", self.profile.path())
@@ -279,6 +279,6 @@ fn exhausted_reports_succeed_and_authentication_errors_are_actionable() {
     let output = denied.run(&["usage", "--json"]);
     assert_eq!(output.status.code(), Some(2));
     let error = String::from_utf8_lossy(&output.stdout);
-    assert!(error.contains("pup login"));
+    assert!(error.contains("sch login"));
     assert!(!error.contains(&denied.key));
 }

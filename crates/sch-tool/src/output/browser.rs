@@ -166,7 +166,7 @@ impl Browser {
         let mut lines = Vec::new();
         if let Some(message) = &self.release_alert {
             lines = Line::default()
-                .push("Pup notice: ", Ink::Warning, true)
+                .push("Schematic CLI notice: ", Ink::Warning, true)
                 .plain(message)
                 .wrapped(content_width);
             // The complete notice remains in scrollback after leaving the alternate screen.
@@ -181,7 +181,7 @@ impl Browser {
             lines.push(Line::default());
         }
         if results.rows.is_empty() {
-            lines.push(Line::new("No checks yet. Run pup check to start."));
+            lines.push(Line::new("No checks yet. Run sch check to start."));
             lines.push(self.close_hint(results));
         } else if width < 60 || height < 20 {
             lines.push(Line::default().muted("Resize to at least 60×20 to browse."));

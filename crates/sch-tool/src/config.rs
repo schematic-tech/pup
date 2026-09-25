@@ -232,7 +232,7 @@ impl StateStore {
                 use std::os::unix::fs::PermissionsExt;
                 if metadata.permissions().mode() & 0o077 != 0 {
                     anyhow::bail!(
-                        "stored Pup API key {} is readable by another user; run `pup login` again",
+                        "stored Pup API key {} is readable by another user; run `sch login` again",
                         path.display()
                     )
                 }
@@ -242,7 +242,7 @@ impl StateStore {
             Ok(value) => {
                 let value = value.trim().to_owned();
                 if value.is_empty() || value.chars().any(char::is_control) {
-                    anyhow::bail!("the stored Pup API key is invalid; run `pup logout` then `pup login`")
+                    anyhow::bail!("the stored Pup API key is invalid; run `sch logout` then `sch login`")
                 }
                 Ok(Some(value))
             }

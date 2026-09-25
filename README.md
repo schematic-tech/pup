@@ -1,6 +1,6 @@
-# Pup
+# Schematic CLI
 
-Pup is Schematic's command-line tool for checking software behavior.
+Use Pup through the Schematic CLI `sch` to check software behavior.
 It finds supertests in C, C#, Java, JavaScript, Python, Rust, and VHDL, sends source to
 Schematic for checking, and displays results and proposed fixes.
 
@@ -12,5 +12,5 @@ JavaScript and VHDL support is currently being rolled out. See
 ## Install
 
 ```sh
-curl -fsSL https://get.schematic.tech/pup.sh | sh
+curl -fsSL https://get.schematic.tech/cli.sh | sh
 ```

@@ -18,7 +18,7 @@ pub async fn run(store: &StateStore, api_url: &str, args: &UsageArgs, ui: &Ui) -
         Some(".") => {
             let git = GitRepository::discover(&std::env::current_dir()?)?;
             Some(find_repository(&state, &git.root)
-                .context("this repository is not linked to Pup\n  Run `pup usage` for all repositories, or select a repository with `--repo NAME`.")?
+                .context("this repository is not linked to Pup\n  Run `sch usage` for all repositories, or select a repository with `--repo NAME`.")?
                 .workspace_id)
         }
         Some(value) => Uuid::parse_str(value).ok(),
@@ -48,7 +48,7 @@ pub async fn run(store: &StateStore, api_url: &str, args: &UsageArgs, ui: &Ui) -
                 }
                 client.usage(&query).await
             },
-            "Usage request interrupted. Run `pup usage` to retry.",
+            "Usage request interrupted. Run `sch usage` to retry.",
         )
         .await?;
     if ui.json {
@@ -76,7 +76,7 @@ fn repository_named(repositories: &[Repository], name: &str) -> Result<Uuid> {
     match matches.as_slice() {
         [repository] => Ok(repository.id),
         [] => bail!(
-            "no repository named `{name}` was found in your account\n  Run `pup usage --json` to see repository names and IDs."
+            "no repository named `{name}` was found in your account\n  Run `sch usage --json` to see repository names and IDs."
         ),
         _ => bail!(
             "more than one repository is named `{name}`\n  Select one with `--repo ID`: {}",

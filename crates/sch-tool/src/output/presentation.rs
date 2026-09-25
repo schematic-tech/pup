@@ -281,7 +281,7 @@ pub(super) fn timing(check: &Check) -> String {
 pub(super) fn fix_command(check: &Check) -> Line {
     Line::default()
         .muted("Review and apply: ")
-        .push(format!("pup fix --check {}", check.number), Ink::Accent, true)
+        .push(format!("sch fix --check {}", check.number), Ink::Accent, true)
         .soft_wrap()
 }
 
@@ -545,7 +545,7 @@ fn needs_attention(check: &Check) -> bool {
 
 pub(super) fn snapshot(results: &Results, include_history: bool, details: bool, width: usize) -> Vec<Line> {
     if results.rows.is_empty() {
-        return vec![Line::new("No checks yet. Run pup check to start.")];
+        return vec![Line::new("No checks yet. Run sch check to start.")];
     }
     if include_history {
         return history_snapshot(results, details, width);

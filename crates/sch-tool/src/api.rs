@@ -164,7 +164,7 @@ impl PupClient {
             base: base.into(),
             credential,
             http: Client::builder()
-                .user_agent(concat!("pup/", env!("CARGO_PKG_VERSION")))
+                .user_agent(concat!("sch/", env!("CARGO_PKG_VERSION")))
                 .redirect(reqwest::redirect::Policy::none())
                 .connect_timeout(Duration::from_secs(10))
                 .build()?,
@@ -197,9 +197,9 @@ impl PupClient {
             .authorize(request)
             .send()
             .await
-            .context("could not load Pup usage; retry `pup usage`")?;
+            .context("could not load Pup usage; retry `sch usage`")?;
         if response.status() == StatusCode::UNAUTHORIZED {
-            bail!("your Pup credential could not be verified\n  Run `pup login`, then retry `pup usage`.")
+            bail!("your Pup credential could not be verified\n  Run `sch login`, then retry `sch usage`.")
         }
         let response = if response.status().is_success() {
             response
@@ -522,7 +522,7 @@ impl PupClient {
             }
         })
         .await
-        .context("waiting for check acceptance timed out; run pup check again to recover the same submission")??;
+        .context("waiting for check acceptance timed out; run sch check again to recover the same submission")??;
         validate_submission(&response, workspace_id)?;
         Ok(response)
     }
@@ -634,7 +634,7 @@ impl PupClient {
             }
         })
         .await
-        .context("timed out waiting for a fix; retry `pup fix` to resume from the current server state")?
+        .context("timed out waiting for a fix; retry `sch fix` to resume from the current server state")?
     }
 
     pub async fn check_events(&self, workspace_id: Uuid, check_numbers: &[u64]) -> Result<CheckEventStream> {

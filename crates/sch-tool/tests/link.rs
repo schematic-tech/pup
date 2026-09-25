@@ -203,7 +203,7 @@ impl Fixture {
         let updates = self.directory.path().join("profile").join("updates");
         std::fs::create_dir_all(&updates).unwrap();
         std::fs::write(updates.join("releases.json"), b"{}").unwrap();
-        Command::new(env!("CARGO_BIN_EXE_pup"))
+        Command::new(env!("CARGO_BIN_EXE_sch"))
             .args(args)
             .env("PUP_CONFIG_DIR", self.directory.path().join("profile"))
             .env("PUP_API_URL", &self.url)
@@ -282,7 +282,7 @@ fn unlinked_nested_repositories_do_not_use_the_parent_association() {
             let error: Value = serde_json::from_slice(&output.stdout).unwrap();
             let message = error.to_string();
             assert!(message.contains("repository is not linked"), "{args:?}: {message}");
-            assert!(message.contains("pup link ."), "{message}");
+            assert!(message.contains("sch link ."), "{message}");
             assert!(message.contains(nested.to_str().unwrap()), "{message}");
             assert_eq!(fixture.state(), before);
             assert_eq!(fixture.remote.lock().unwrap().requests.len(), request_count);

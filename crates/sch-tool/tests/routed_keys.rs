@@ -12,7 +12,7 @@ use uuid::Uuid;
 fn login(profile: &TempDir, key: &str, extra: &[&str]) -> Output {
     std::fs::create_dir_all(profile.path().join("updates")).unwrap();
     std::fs::write(profile.path().join("updates/releases.json"), b"{}").unwrap();
-    Command::new(env!("CARGO_BIN_EXE_pup"))
+    Command::new(env!("CARGO_BIN_EXE_sch"))
         .args(extra)
         .arg("login")
         .env("PUP_CONFIG_DIR", profile.path())

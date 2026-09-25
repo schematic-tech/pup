@@ -9,7 +9,7 @@ pub const CLAP_STYLING: clap::builder::styling::Styles = clap::builder::styling:
     .placeholder(clap::builder::styling::AnsiColor::Cyan.on_default());
 
 #[derive(Debug, Parser)]
-#[command(name = "pup", version, about = "Check behaviors your code must always preserve",
+#[command(name = "sch", version, about = "Check behaviors your code must always preserve",
     styles = CLAP_STYLING, propagate_version = true)]
 pub struct Cli {
     #[arg(long, env = "PUP_API_URL", global = true, hide = true)]
@@ -197,9 +197,9 @@ mod tests {
                 "login", "logout", "link", "unlink", "check", "status", "usage", "cancel", "fix"
             ]
         );
-        assert!(Cli::try_parse_from(["pup", "repo", "link"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "completion", "zsh"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "cancel"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "repo", "link"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "completion", "zsh"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "cancel"]).is_err());
         let mut command = Cli::command();
         let status_help = command
             .find_subcommand_mut("status")
@@ -229,13 +229,13 @@ mod tests {
 
     #[test]
     fn check_words_are_now_selectors_and_execution_is_attached_by_default() {
-        let Command::Check(args) = Cli::try_parse_from(["pup", "check", "status"]).unwrap().command else {
+        let Command::Check(args) = Cli::try_parse_from(["sch", "check", "status"]).unwrap().command else {
             panic!()
         };
         assert_eq!(args.selector.as_deref(), Some("status"));
         assert!(!args.detach);
-        assert!(Cli::try_parse_from(["pup", "check", "--dirty", "--commit", "HEAD"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "check", "--prove"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "check", "--dirty", "--commit", "HEAD"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "check", "--prove"]).is_err());
         let help = Cli::command()
             .find_subcommand_mut("check")
             .unwrap()
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn attached_streaming_is_opt_in_and_requires_json() {
-        let Command::Check(args) = Cli::try_parse_from(["pup", "check", "--json", "--stream"])
+        let Command::Check(args) = Cli::try_parse_from(["sch", "check", "--json", "--stream"])
             .unwrap()
             .command
         else {
@@ -254,22 +254,22 @@ mod tests {
         };
         assert!(args.stream && !args.detach);
         assert!(
-            Cli::try_parse_from(["pup", "check", "--stream"])
+            Cli::try_parse_from(["sch", "check", "--stream"])
                 .and_then(Cli::validate)
                 .is_err()
         );
         assert!(
-            Cli::try_parse_from(["pup", "--json", "check", "--stream"])
+            Cli::try_parse_from(["sch", "--json", "check", "--stream"])
                 .and_then(Cli::validate)
                 .is_ok()
         );
-        assert!(Cli::try_parse_from(["pup", "check", "--json", "--stream", "--detach"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "status", "--json", "--stream"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "check", "--json", "--stream", "--detach"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "status", "--json", "--stream"]).is_err());
     }
 
     #[test]
     fn status_is_a_snapshot_unless_watch_is_explicit() {
-        let Command::Status(args) = Cli::try_parse_from(["pup", "status", "--check", "23", "--history"])
+        let Command::Status(args) = Cli::try_parse_from(["sch", "status", "--check", "23", "--history"])
             .unwrap()
             .command
         else {
@@ -277,10 +277,10 @@ mod tests {
         };
         assert!(!args.watch);
         assert!(args.history);
-        assert!(Cli::try_parse_from(["pup", "status", "--wait"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "status", "--browse"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "status", "--wait"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "status", "--browse"]).is_err());
         assert!(
-            Cli::try_parse_from(["pup", "status", "--watch", "--json"])
+            Cli::try_parse_from(["sch", "status", "--watch", "--json"])
                 .unwrap()
                 .json
         );
@@ -288,15 +288,15 @@ mod tests {
 
     #[test]
     fn fix_applies_by_default_and_preview_cannot_authorize_edits() {
-        let Command::Fix(args) = Cli::try_parse_from(["pup", "fix", "--check", "23"]).unwrap().command else {
+        let Command::Fix(args) = Cli::try_parse_from(["sch", "fix", "--check", "23"]).unwrap().command else {
             panic!()
         };
         assert!(!args.dry_run && !args.yes);
-        assert!(Cli::try_parse_from(["pup", "fix", "--dry-run"]).is_ok());
-        assert!(Cli::try_parse_from(["pup", "fix", "--dry-run", "--yes"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "fix", "--agent", "codex"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "fix", "--agent", "codex", "--yes"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "fix", "--apply"]).is_err());
-        assert!(Cli::try_parse_from(["pup", "fix", "--no-wait"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "fix", "--dry-run"]).is_ok());
+        assert!(Cli::try_parse_from(["sch", "fix", "--dry-run", "--yes"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "fix", "--agent", "codex"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "fix", "--agent", "codex", "--yes"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "fix", "--apply"]).is_err());
+        assert!(Cli::try_parse_from(["sch", "fix", "--no-wait"]).is_err());
     }
 }

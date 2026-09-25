@@ -1,7 +1,7 @@
 use std::{fs, process::Command};
 
 fn command(profile: &std::path::Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_pup"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_sch"));
     command
         .env("PUP_CONFIG_DIR", profile)
         .env("NO_COLOR", "1")
@@ -14,7 +14,7 @@ fn cache_alert(profile: &std::path::Path, version: &str, alert: &str) {
     fs::create_dir_all(&cache).unwrap();
     fs::write(
         cache.join("releases.json"),
-        serde_json::json!({"pup-tool": {"version": version, "alert": alert}}).to_string(),
+        serde_json::json!({"sch-tool": {"version": version, "alert": alert}}).to_string(),
     )
     .unwrap();
 }
@@ -23,7 +23,7 @@ fn cache_alert(profile: &std::path::Path, version: &str, alert: &str) {
 fn alerts_appear_once_per_invocation_without_changing_stdout_or_exit_status() {
     let profile = tempfile::tempdir().unwrap();
     let message = "Installation is changing.\nSee https://example.test/install for instructions.";
-    let expected = format!("\n  Pup notice\n  {}\n\n", message.replace('\n', "\n  "));
+    let expected = format!("\n  Schematic CLI notice\n  {}\n\n", message.replace('\n', "\n  "));
     // Even an up-to-date installation must show the alert, on every invocation.
     cache_alert(profile.path(), env!("CARGO_PKG_VERSION"), message);
     for args in [
@@ -42,7 +42,7 @@ fn alerts_appear_once_per_invocation_without_changing_stdout_or_exit_status() {
             match args[0] {
                 "--version" => assert_eq!(
                     output.stdout,
-                    concat!("pup ", env!("CARGO_PKG_VERSION"), "\n").as_bytes()
+                    concat!("sch ", env!("CARGO_PKG_VERSION"), "\n").as_bytes()
                 ),
                 "--help" => assert!(String::from_utf8(output.stdout).unwrap().contains("Usage:")),
                 _ => {
@@ -58,7 +58,7 @@ fn alerts_appear_once_per_invocation_without_changing_stdout_or_exit_status() {
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.starts_with(&expected));
-    assert_eq!(stderr.matches("Pup notice").count(), 1);
+    assert_eq!(stderr.matches("Schematic CLI notice").count(), 1);
     assert!(stderr.contains("unexpected argument"));
 }
 
@@ -74,15 +74,15 @@ fn active_alert_replaces_the_generic_update_hint_and_cleans_terminal_controls() 
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stderr).unwrap(),
-        "\n  Pup notice\n  Install instructions\n  https://example.test/install\n\n"
+        "\n  Schematic CLI notice\n  Install instructions\n  https://example.test/install\n\n"
     );
 
     for alert in ["", " \t\n ", "\u{1b}[31m\u{7}\u{1b}[0m"] {
         cache_alert(profile.path(), "999.0.0", alert);
         let output = command(profile.path()).arg("--version").output().unwrap();
         let stderr = String::from_utf8(output.stderr).unwrap();
-        assert!(!stderr.contains("Pup notice"));
-        assert!(stderr.contains("Pup 999.0.0 is available"));
+        assert!(!stderr.contains("Schematic CLI notice"));
+        assert!(stderr.contains("Schematic CLI 999.0.0 is available"));
     }
 }
 
@@ -109,19 +109,19 @@ fn cached_notice_is_styled_as_text_on_stderr_and_keeps_json_and_version_output_c
     fs::create_dir(&cache).unwrap();
     fs::write(
         cache.join("releases.json"),
-        br#"{"pup-tool":"999.0.0","another-tool":"1.0.0"}"#,
+        br#"{"sch-tool":"999.0.0","another-tool":"1.0.0"}"#,
     )
     .unwrap();
     let output = command(profile.path()).arg("--version").output().unwrap();
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
-        concat!("pup ", env!("CARGO_PKG_VERSION"), "\n")
+        concat!("sch ", env!("CARGO_PKG_VERSION"), "\n")
     );
     let notice = String::from_utf8(output.stderr).unwrap();
-    assert!(notice.contains("Pup 999.0.0 is available"));
+    assert!(notice.contains("Schematic CLI 999.0.0 is available"));
     assert!(notice.contains(concat!("(installed: ", env!("CARGO_PKG_VERSION"), ")")));
-    assert!(notice.contains("curl -fsSL https://get.schematic.tech/pup.sh | bash\n"));
+    assert!(notice.contains("curl -fsSL https://get.schematic.tech/cli.sh | sh\n"));
     assert!(!notice.contains('\x1b'));
 
     let output = command(profile.path()).args(["logout", "--json"]).output().unwrap();
@@ -145,7 +145,7 @@ fn missing_or_corrupt_cache_is_silent_and_a_failed_refresh_does_not_spawn_again_
     let cache = profile.path().join("updates");
     fs::create_dir(&cache).unwrap();
     fs::write(cache.join("last-attempt"), b"").unwrap();
-    for contents in [None, Some("<error>offline</error>"), Some(r#"{"pup-tool":"0.0.1"}"#)] {
+    for contents in [None, Some("<error>offline</error>"), Some(r#"{"sch-tool":"0.0.1"}"#)] {
         if let Some(contents) = contents {
             fs::write(cache.join("releases.json"), contents).unwrap();
         }

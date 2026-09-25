@@ -123,17 +123,17 @@ fn human_follow_ups_use_readable_targets_while_json_keeps_the_exact_run() {
         details: true,
         release_alert: None,
     };
-    assert_eq!(ui.follow_up(&results, false).text(), "Details: pup status --details");
+    assert_eq!(ui.follow_up(&results, false).text(), "Details: sch status --details");
     assert_eq!(
         ui.follow_up(&results, true).text(),
-        "Watch: pup status --watch --details"
+        "Watch: sch status --watch --details"
     );
     assert_eq!(results.json_target(), format!("--run {run_id}"));
 
     results.selector = "supertests/a file.py".into();
     assert_eq!(
         ui.follow_up(&results, true).text(),
-        "Watch: pup status 'supertests/a file.py' --watch --details"
+        "Watch: sch status 'supertests/a file.py' --watch --details"
     );
     for history in [false, true] {
         let lines = presentation::snapshot(&results, history, true, 80);
@@ -143,7 +143,7 @@ fn human_follow_ups_use_readable_targets_while_json_keeps_the_exact_run() {
             .unwrap();
         assert_eq!(
             hint.text(),
-            "More history: pup status 'supertests/a file.py' --history --before 1"
+            "More history: sch status 'supertests/a file.py' --history --before 1"
         );
         assert!(hint.soft_wrap, "copying long commands must preserve shell arguments");
         assert!(!lines_text(&lines).contains(&run_id.to_string()));
@@ -151,7 +151,7 @@ fn human_follow_ups_use_readable_targets_while_json_keeps_the_exact_run() {
     results.rows.truncate(1);
     assert_eq!(
         ui.follow_up(&results, false).text(),
-        "Details: pup status --check 1 --details"
+        "Details: sch status --check 1 --details"
     );
     assert_eq!(results.json_target(), format!("--run {run_id}"));
 }
@@ -219,7 +219,7 @@ fn release_alert_stays_visible_while_browsing_without_hiding_controls() {
                 assert_eq!(lines.len(), height);
                 assert!(lines.iter().all(|line| measure_text_width(line) <= width));
                 let text = lines.join("\n");
-                assert_eq!(text.matches("Pup notice:").count(), 1);
+                assert_eq!(text.matches("Schematic CLI notice:").count(), 1);
                 assert!(text.contains("Esc/Ctrl+C detach"), "{text}");
                 if message.starts_with("Installation") {
                     assert!(text.contains("https://example.test/install."));
@@ -1103,8 +1103,8 @@ fn evidence_preserves_headings_paragraphs_and_continuation_indentation() {
     assert!(lines[2].text().starts_with("  "));
     assert!(lines.iter().any(|line| line.text().is_empty()));
     assert_eq!(
-        clean("error\n  Run pup link\tthen retry"),
-        "error\n  Run pup link  then retry"
+        clean("error\n  Run sch link\tthen retry"),
+        "error\n  Run sch link  then retry"
     );
     assert!(!clean("safe\x1b[31mred\x1b[0m\x1b]52;c;data\x07").contains('\x1b'));
 }
@@ -1503,13 +1503,13 @@ fn printed_results_share_one_scoped_details_hint() {
     }
     let text = lines_text(&presentation::snapshot(&results, false, false, 100));
     assert_eq!(text.matches("Details:").count(), 1, "{text}");
-    assert!(text.ends_with("Details: pup status 'supertests/a file.py' --details"));
+    assert!(text.ends_with("Details: sch status 'supertests/a file.py' --details"));
     assert_eq!(text.matches("Normalizing twice changes the text.").count(), 3);
     assert!(!lines_text(&presentation::snapshot(&results, false, true, 100)).contains("Details:"));
     results.rows.truncate(1);
     assert!(
         lines_text(&presentation::snapshot(&results, false, false, 100))
-            .ends_with("Details: pup status --check 1 --details")
+            .ends_with("Details: sch status --check 1 --details")
     );
 }
 
@@ -1590,7 +1590,7 @@ fn pending_fix_output_does_not_claim_active_preparation() {
                 check.problematic && check.operational_error.is_none()
             );
             assert!(!output.contains("being prepared"));
-            assert!(!output.contains("pup fix"));
+            assert!(!output.contains("sch fix"));
         }
         assert_eq!(serde_json::to_value(&check).unwrap(), original_json);
         check.fix_pending = false;
@@ -1614,12 +1614,12 @@ fn pending_fix_summary_offers_watch_and_preserves_the_detail_preference() {
         let text = lines_text(&presentation::snapshot(&results, false, details, 100));
         assert!(text.contains("A fix proposal may still arrive."));
         assert!(!text.contains("No fix proposal"));
-        assert!(!text.contains("Details: pup status"));
+        assert!(!text.contains("Details: sch status"));
         assert!(
             text.ends_with(if details {
-                "Watch: pup status --check 42 --watch --details"
+                "Watch: sch status --check 42 --watch --details"
             } else {
-                "Watch: pup status --check 42 --watch"
+                "Watch: sch status --check 42 --watch"
             }),
             "{text}"
         );
@@ -1688,13 +1688,13 @@ fn available_fix_is_shown_without_a_preparation_hint_or_changes_to_its_data() {
         diff: "diff --git a/normalize.py b/normalize.py\n--- a/normalize.py\n+++ b/normalize.py\n@@ -1 +1 @@\n-    return text.replace('  ', ' ')\n+    return ' '.join(text.split(' '))\n".into(),
         instructions: "Review the patch before applying it.".into(),
         files: vec![pup_types::FixFile { path: "normalize.py".into(), change: pup_types::FixFileChange::Modified }],
-        validation: vec!["pup check".into()],
+        validation: vec!["sch check".into()],
         created_at: check.updated_at,
     });
     let original_json = serde_json::to_value(&check).unwrap();
     for details in [false, true] {
         let output = lines_text(&evidence(&check, EvidenceView::snapshot(details), false));
-        assert!(output.contains("Review and apply: pup fix --check 42"));
+        assert!(output.contains("Review and apply: sch fix --check 42"));
         assert!(!output.contains("being prepared"));
         assert!(!output.contains("may still arrive"));
         assert!(!output.contains("No fix proposal"));
@@ -1808,7 +1808,7 @@ fn compact_completion_omits_passes_regardless_of_explanation_and_counts_certific
     let mixed = lines_text(&presentation::snapshot(&results, false, false, 80));
     assert!(mixed.contains("3 passed · 1 failed"));
     assert!(!mixed.contains("law_2"));
-    assert!(mixed.contains("pup status . --details"));
+    assert!(mixed.contains("sch status . --details"));
     results.rows[1]
         .current
         .as_mut()
@@ -2127,7 +2127,7 @@ fn canceled_snapshots_are_concise_but_never_hide_existing_findings() {
     let compact = presentation::snapshot(&results, false, false, 80);
     assert_eq!(
         lines_text(&compact),
-        "○ canceled · law_1 · #1\n\nTo check again: pup check 'supertests/a file.py::law_1'"
+        "○ canceled · law_1 · #1\n\nTo check again: sch check 'supertests/a file.py::law_1'"
     );
     assert!(compact.last().unwrap().soft_wrap);
     let expanded = lines_text(&presentation::snapshot(&results, false, true, 80));
@@ -2141,7 +2141,7 @@ fn canceled_snapshots_are_concise_but_never_hide_existing_findings() {
     });
     let text = lines_text(&presentation::snapshot(&results, false, false, 80));
     assert!(text.contains("Exact evidence\n\nMore evidence"), "{text}");
-    assert!(text.contains("Details: pup status --check 1 --details"));
+    assert!(text.contains("Details: sch status --check 1 --details"));
 
     let passed = result_check(2, pup_types::CheckOutcome::Pass, pup_types::CheckAssurance::Uncertified);
     results.rows.push(ScopeStatusRow {

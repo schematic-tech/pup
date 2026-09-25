@@ -94,7 +94,7 @@ fn cached_release(directory: &Path) -> Option<Release> {
     if bytes.len() as u64 > MAX_MANIFEST_BYTES {
         return None;
     }
-    parse_manifest(&bytes).ok()?.remove("pup-tool")
+    parse_manifest(&bytes).ok()?.remove("sch-tool")
 }
 
 fn fresh(path: &Path) -> bool {
@@ -180,7 +180,7 @@ async fn refresh(directory: &Path, url: &str, timeout: Duration) -> Result<()> {
     let client = reqwest::Client::builder()
         .connect_timeout(timeout)
         .timeout(timeout)
-        .user_agent(concat!("pup/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("sch/", env!("CARGO_PKG_VERSION")))
         .build()?;
     let mut response = client.get(url).send().await?.error_for_status()?;
     if let Some(length) = response.content_length() {
@@ -220,7 +220,7 @@ mod tests {
     }
 
     fn stale_cache(directory: &Path) -> Vec<u8> {
-        let bytes = br#"{"pup-tool":"0.4.2","another-tool":"2.0.0"}"#.to_vec();
+        let bytes = br#"{"sch-tool":"0.4.2","another-tool":"2.0.0"}"#.to_vec();
         fs::write(directory.join(CACHE_FILE), &bytes).unwrap();
         OpenOptions::new()
             .write(true)
@@ -246,7 +246,7 @@ mod tests {
             for entry in [serde_json::json!(latest), serde_json::json!({"version": latest})] {
                 fs::write(
                     directory.path().join(CACHE_FILE),
-                    serde_json::json!({"pup-tool": entry}).to_string(),
+                    serde_json::json!({"sch-tool": entry}).to_string(),
                 )
                 .unwrap();
                 assert_eq!(
@@ -259,14 +259,14 @@ mod tests {
         for invalid in [
             "{",
             "[]",
-            r#"{"pup-tool":"latest"}"#,
-            r#"{"pup-tool":7}"#,
-            r#"{"pup-tool":{"alert":"notice"}}"#,
-            r#"{"pup-tool":{"version":"latest"}}"#,
-            r#"{"pup-tool":{"version":"0.5.0","alert":null}}"#,
-            r#"{"pup-tool":{"version":"0.5.0","alert":7}}"#,
+            r#"{"sch-tool":"latest"}"#,
+            r#"{"sch-tool":7}"#,
+            r#"{"sch-tool":{"alert":"notice"}}"#,
+            r#"{"sch-tool":{"version":"latest"}}"#,
+            r#"{"sch-tool":{"version":"0.5.0","alert":null}}"#,
+            r#"{"sch-tool":{"version":"0.5.0","alert":7}}"#,
             r#"{"other-tool":"999.0.0"}"#,
-            r#"{"pup-tool":"9.0.0\nrun this"}"#,
+            r#"{"sch-tool":"9.0.0\nrun this"}"#,
         ] {
             fs::write(directory.path().join(CACHE_FILE), invalid).unwrap();
             assert!(cached_release(directory.path()).is_none());
@@ -279,11 +279,11 @@ mod tests {
     fn alerts_are_independent_of_version_precedence() {
         for version in ["0.4.0", "0.5.0", "0.6.0-rc.1", "0.6.0"] {
             let manifest = serde_json::json!({
-                "pup-tool": {"version": version, "alert": "Installation is changing.", "future": true},
+                "sch-tool": {"version": version, "alert": "Installation is changing.", "future": true},
                 "another-tool": "2.0.0"
             });
             let mut releases = parse_manifest(manifest.to_string().as_bytes()).unwrap();
-            let release = releases.remove("pup-tool").unwrap();
+            let release = releases.remove("sch-tool").unwrap();
             assert_eq!(release.version.to_string(), version);
             assert_eq!(release.alert.as_deref(), Some("Installation is changing."));
             assert!(releases["another-tool"].alert.is_none());
@@ -340,7 +340,7 @@ mod tests {
     async fn replaces_a_complete_manifest_and_preserves_cache_during_the_download() {
         let directory = tempfile::tempdir().unwrap();
         let before = stale_cache(directory.path());
-        let after = br#"{"pup-tool":{"version":"0.5.0","alert":"Installation is changing."},"another-tool":{"version":"3.0.0"}}"#.to_vec();
+        let after = br#"{"sch-tool":{"version":"0.5.0","alert":"Installation is changing."},"another-tool":{"version":"3.0.0"}}"#.to_vec();
         let (url, server) = server(200, after.clone(), Duration::from_millis(100)).await;
         let refresh = refresh(directory.path(), &url, FETCH_TIMEOUT);
         let reader = async {
@@ -362,7 +362,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         fs::write(
             directory.path().join(CACHE_FILE),
-            br#"{"pup-tool":{"version":"0.5.0","alert":"Installation is changing."}}"#,
+            br#"{"sch-tool":{"version":"0.5.0","alert":"Installation is changing."}}"#,
         )
         .unwrap();
         File::options()
@@ -372,7 +372,7 @@ mod tests {
             .set_modified(SystemTime::now() - REFRESH_INTERVAL - Duration::from_secs(1))
             .unwrap();
         assert!(cached_release(directory.path()).unwrap().alert.is_some());
-        let (url, server) = server(200, br#"{"pup-tool":{"version":"0.5.0"}}"#.to_vec(), Duration::ZERO).await;
+        let (url, server) = server(200, br#"{"sch-tool":{"version":"0.5.0"}}"#.to_vec(), Duration::ZERO).await;
         refresh(directory.path(), &url, FETCH_TIMEOUT).await.unwrap();
         server.await.unwrap();
         assert!(cached_release(directory.path()).unwrap().alert.is_none());
@@ -384,8 +384,8 @@ mod tests {
             (404, b"not found".to_vec()),
             (500, b"unavailable".to_vec()),
             (200, b"{".to_vec()),
-            (200, br#"{"pup-tool":"not-semver"}"#.to_vec()),
-            (200, br#"{"pup-tool":{"version":"0.5.0","alert":false}}"#.to_vec()),
+            (200, br#"{"sch-tool":"not-semver"}"#.to_vec()),
+            (200, br#"{"sch-tool":{"version":"0.5.0","alert":false}}"#.to_vec()),
             (200, vec![b' '; usize::try_from(MAX_MANIFEST_BYTES + 1).unwrap()]),
         ] {
             let directory = tempfile::tempdir().unwrap();

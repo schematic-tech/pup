@@ -28,7 +28,7 @@ pub fn ensure_daemon(store: &StateStore) -> Result<()> {
         return Ok(());
     }
     FileExt::unlock(&lock)?;
-    let executable = std::env::current_exe().context("could not locate the Pup executable")?;
+    let executable = std::env::current_exe().context("could not locate the Schematic CLI executable")?;
     Command::new(executable)
         .arg("daemon")
         .env_remove("PUP_ACCESS_TOKEN")

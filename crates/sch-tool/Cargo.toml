@@ -1,6 +1,6 @@
 [package]
-name = "pup-tool"
-description = "Formally verify that your software is correct with Pup CLI"
+name = "sch-tool"
+description = "The Schematic CLI for verifying software behavior with Pup"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "development-tools::testing"]
 include = ["/src", "/tests", "/README.md", "/LICENSE*"]
 
 [[bin]]
-name = "pup"
+name = "sch"
 path = "src/main.rs"
 
 [dependencies]
