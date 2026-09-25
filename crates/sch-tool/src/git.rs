@@ -128,7 +128,7 @@ impl GitRepository {
     }
 
     /// Capture working files using an isolated index, without creating a commit or moving refs.
-    /// Include all Git-visible paths for race/scope checks; `source_snapshot` applies Pup exclusions.
+    /// Include all Git-visible paths for race/scope checks; `source_snapshot` applies .schignore exclusions.
     pub fn worktree_snapshot(&self) -> Result<WorktreeSnapshot> {
         for _ in 0..3 {
             let temporary = TempDir::new().context("could not create an isolated Git index")?;
@@ -144,7 +144,7 @@ impl GitRepository {
                 });
             }
         }
-        bail!("working files or staging kept changing while Pup prepared the fix; stop the edits and retry")
+        bail!("working files or staging kept changing while sch read them; stop the edits and retry")
     }
 
     pub fn prepare_fix(&self, base_tree_sha256: &str, diff: &str) -> Result<PreparedFix> {
@@ -163,7 +163,7 @@ impl GitRepository {
             bail!("the proposed fix is empty or exceeds the 512 KiB patch limit")
         }
         if diff.contains("GIT binary patch") || diff.contains("Submodule ") {
-            bail!("binary and submodule patches cannot be applied by Pup")
+            bail!("binary and submodule patches cannot be applied by sch")
         }
         validate_fix_diff_paths(diff)?;
         run_git_with_stdin(
@@ -220,7 +220,7 @@ impl GitRepository {
         let after = self.worktree_snapshot()?;
         if after.head.oid != before.head.oid || after.index_sha256 != before.index_sha256 {
             bail!(
-                "Git HEAD or staging changed during fix application\n  Inspect the changes before continuing; Pup has not restored or committed anything."
+                "Git HEAD or staging changed during fix application\n  Inspect the changes before continuing; sch has not restored or committed anything."
             )
         }
         let paths = run_git_bytes(
@@ -279,7 +279,7 @@ impl GitRepository {
             }
 
             let oid = create_commit_object(&self.root, &tree, &parent.oid)?;
-            let reference = format!("refs/pup/commits/{oid}");
+            let reference = format!("refs/sch/commits/{oid}");
             run_git(&self.root, ["update-ref", &reference, &oid])?;
             return Ok(TemporaryCommit {
                 commit: CommitRef {
@@ -291,7 +291,7 @@ impl GitRepository {
                 fingerprint,
             });
         }
-        bail!("working files kept changing while Pup prepared them; stop the edits and retry")
+        bail!("working files kept changing while sch captured them; stop the edits and retry")
     }
 
     pub fn file_at_commit(&self, oid: &str, path: &str) -> Result<String> {
@@ -305,7 +305,7 @@ impl GitRepository {
     }
 
     pub fn source_snapshot(&self, oid: &str, known_hashes: &HashMap<String, String>) -> Result<SourceSnapshot> {
-        let ignores = self.pupignore_at_commit(oid)?;
+        let ignores = self.schignore_at_commit(oid)?;
         let mut files = Vec::new();
         let mut source_hashes = known_hashes.clone();
         let mut content_paths = HashMap::new();
@@ -329,7 +329,7 @@ impl GitRepository {
                     let actual_bytes = u64::try_from(content.len()).unwrap_or(u64::MAX);
                     if actual_bytes != file.bytes {
                         bail!(
-                            "Git blob {} changed size while Pup read commit {}",
+                            "Git blob {} changed size while sch read commit {}",
                             file.oid,
                             short_oid(oid)
                         )
@@ -362,7 +362,7 @@ impl GitRepository {
     }
 
     pub fn files_at_commit(&self, oid: &str) -> Result<Vec<String>> {
-        let ignores = self.pupignore_at_commit(oid)?;
+        let ignores = self.schignore_at_commit(oid)?;
         self.tree_entries_at_commit(oid)?
             .into_iter()
             .filter(|entry| {
@@ -402,15 +402,15 @@ impl GitRepository {
     fn untracked_paths(&self, include_excluded: bool) -> Result<Vec<String>> {
         let output = run_git_bytes(&self.root, ["ls-files", "--others", "--exclude-standard", "-z"])?;
         let mut builder = GitignoreBuilder::new(&self.root);
-        let pupignore = self.root.join(".pupignore");
-        if pupignore.exists() {
-            builder.add(&pupignore);
+        let schignore = self.root.join(".schignore");
+        if schignore.exists() {
+            builder.add(&schignore);
         }
-        let ignores = builder.build().context("could not parse the repository's .pupignore")?;
+        let ignores = builder.build().context("could not parse the repository's .schignore")?;
         output
             .split(|byte| *byte == 0)
             .filter(|path| !path.is_empty())
-            .map(|path| String::from_utf8(path.to_vec()).context("Pup does not yet support non-UTF-8 repository paths"))
+            .map(|path| String::from_utf8(path.to_vec()).context("sch does not yet support non-UTF-8 repository paths"))
             .filter_ok(|path| {
                 include_excluded
                     || !ignores
@@ -420,16 +420,16 @@ impl GitRepository {
             .collect()
     }
 
-    fn pupignore_at_commit(&self, oid: &str) -> Result<ignore::gitignore::Gitignore> {
+    fn schignore_at_commit(&self, oid: &str) -> Result<ignore::gitignore::Gitignore> {
         let mut builder = GitignoreBuilder::new(&self.root);
-        if let Ok(source) = self.file_at_commit(oid, ".pupignore") {
+        if let Ok(source) = self.file_at_commit(oid, ".schignore") {
             for line in source.lines() {
-                builder.add_line(Some(PathBuf::from(".pupignore")), line)?;
+                builder.add_line(Some(PathBuf::from(".schignore")), line)?;
             }
         }
         builder
             .build()
-            .context("could not parse .pupignore at the selected commit")
+            .context("could not parse .schignore at the selected commit")
     }
 
     fn blob_bytes(&self, oid: &str) -> Result<Vec<u8>> {
@@ -493,10 +493,10 @@ fn create_commit_object(root: &Path, tree: &str, parent: &str) -> Result<String>
     let mut command = git_command(root);
     command
         .args(["commit-tree", tree, "-p", parent])
-        .env("GIT_AUTHOR_NAME", "Pup")
-        .env("GIT_AUTHOR_EMAIL", "pup@schematic.tech")
-        .env("GIT_COMMITTER_NAME", "Pup")
-        .env("GIT_COMMITTER_EMAIL", "pup@schematic.tech")
+        .env("GIT_AUTHOR_NAME", "Schematic CLI")
+        .env("GIT_AUTHOR_EMAIL", "sch@schematic.tech")
+        .env("GIT_COMMITTER_NAME", "Schematic CLI")
+        .env("GIT_COMMITTER_EMAIL", "sch@schematic.tech")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -505,7 +505,7 @@ fn create_commit_object(root: &Path, tree: &str, parent: &str) -> Result<String>
         .stdin
         .take()
         .context("could not open git input")?
-        .write_all(b"Temporary Pup commit\n")?;
+        .write_all(b"Temporary Schematic CLI commit\n")?;
     command_output_from(child.wait_with_output()?).map(|value| value.trim().to_owned())
 }
 
@@ -615,7 +615,7 @@ fn parse_tree_entry(entry: &[u8]) -> Result<TreeEntry> {
         .then(|| size.parse().context("Git returned an invalid blob size"))
         .transpose()?;
     Ok(TreeEntry {
-        path: String::from_utf8(path.to_vec()).context("Pup does not yet support non-UTF-8 repository paths")?,
+        path: String::from_utf8(path.to_vec()).context("sch does not yet support non-UTF-8 repository paths")?,
         oid: oid.to_owned(),
         mode: mode.to_owned(),
         kind: kind.to_owned(),
@@ -626,7 +626,7 @@ fn parse_tree_entry(entry: &[u8]) -> Result<TreeEntry> {
 fn regular_tree_file(entry: TreeEntry) -> Result<TreeFile> {
     if entry.kind != "blob" || !matches!(entry.mode.as_str(), "100644" | "100755") {
         bail!(
-            "Pup cannot sync `{}` because Git records it as type `{}` with mode `{}`; add the path to .pupignore or replace it with a regular file",
+            "sch cannot sync `{}` because Git records it as type `{}` with mode `{}`; add the path to .schignore or replace it with a regular file",
             entry.path,
             entry.kind,
             entry.mode
@@ -676,7 +676,7 @@ mod tests {
         run_git(root, ["config", "user.name", "Pup Test"]).unwrap();
         run_git(root, ["config", "user.email", "pup-test@example.com"]).unwrap();
         std::fs::write(root.join("value.txt"), CONTEXT_SOURCE).unwrap();
-        std::fs::write(root.join(".pupignore"), "excluded.txt\n").unwrap();
+        std::fs::write(root.join(".schignore"), "excluded.txt\n").unwrap();
         std::fs::write(root.join(".gitignore"), "ignored.txt\n").unwrap();
         run_git(root, ["add", "."]).unwrap();
         run_git(root, ["-c", "commit.gpgsign=false", "commit", "-m", "Base"]).unwrap();
@@ -848,7 +848,7 @@ mod tests {
         run_git(directory.path(), ["config", "user.name", "Pup Test"]).unwrap();
         run_git(directory.path(), ["config", "user.email", "pup-test@example.com"]).unwrap();
         std::fs::write(directory.path().join("tracked.txt"), "before\n").unwrap();
-        std::fs::write(directory.path().join(".pupignore"), "private.txt\n").unwrap();
+        std::fs::write(directory.path().join(".schignore"), "private.txt\n").unwrap();
         run_git(directory.path(), ["add", "."]).unwrap();
         run_git(directory.path(), ["commit", "-m", "Initial"]).unwrap();
 
@@ -876,7 +876,7 @@ mod tests {
         let known = HashMap::from([(first.fingerprint.clone(), first.commit.oid.clone())]);
         let second = repository.temporary_commit(&known).unwrap();
         assert_eq!(second.commit.oid, first.commit.oid);
-        let reference = format!("refs/pup/commits/{}", first.commit.oid);
+        let reference = format!("refs/sch/commits/{}", first.commit.oid);
         assert_eq!(
             run_git(directory.path(), ["rev-parse", &reference]).unwrap().trim(),
             first.commit.oid
@@ -922,6 +922,47 @@ mod tests {
     }
 
     #[test]
+    fn schignore_follows_selected_source_without_reading_the_retired_filename() {
+        let (_directory, repository) = fix_repository();
+        let root = &repository.root;
+        std::fs::write(root.join(".pupignore"), "legacy.txt\n").unwrap();
+        std::fs::write(root.join("legacy.txt"), "included\n").unwrap();
+        std::fs::write(root.join("excluded.txt"), "excluded by committed rules\n").unwrap();
+        run_git(root, ["add", "."]).unwrap();
+        run_git(root, ["-c", "commit.gpgsign=false", "commit", "-m", "Source selection"]).unwrap();
+        let committed = repository.head().unwrap();
+
+        std::fs::write(root.join(".schignore"), "value.txt\nprivate-new.txt\n").unwrap();
+        std::fs::write(root.join("private-new.txt"), "excluded by working rules\n").unwrap();
+        let temporary = repository.temporary_commit(&HashMap::new()).unwrap();
+        for (oid, excluded, included) in [
+            (&committed.oid, "excluded.txt", "value.txt"),
+            (&temporary.commit.oid, "value.txt", "excluded.txt"),
+        ] {
+            let paths = repository.files_at_commit(oid).unwrap();
+            let snapshot = repository.source_snapshot(oid, &HashMap::new()).unwrap();
+            assert!(!paths.iter().any(|path| path == excluded));
+            assert!(paths.iter().any(|path| path == included));
+            assert!(paths.iter().any(|path| path == "legacy.txt"));
+            assert!(!paths.iter().any(|path| path == "private-new.txt"));
+            assert_eq!(
+                paths,
+                snapshot
+                    .manifest
+                    .files
+                    .iter()
+                    .map(|file| file.path.clone())
+                    .collect::<Vec<_>>()
+            );
+        }
+        assert!(
+            repository
+                .file_at_commit(&temporary.commit.oid, "private-new.txt")
+                .is_err()
+        );
+    }
+
+    #[test]
     fn source_snapshot_is_exact_sorted_and_reuses_blob_hashes() {
         let directory = tempfile::tempdir().unwrap();
         run_git(directory.path(), ["init", "-b", "main"]).unwrap();
@@ -929,7 +970,7 @@ mod tests {
         run_git(directory.path(), ["config", "user.email", "pup-test@example.com"]).unwrap();
         std::fs::create_dir_all(directory.path().join("src")).unwrap();
         std::fs::create_dir_all(directory.path().join("private")).unwrap();
-        std::fs::write(directory.path().join(".pupignore"), "private/\n").unwrap();
+        std::fs::write(directory.path().join(".schignore"), "private/\n").unwrap();
         std::fs::write(directory.path().join("src/lib.rs"), b"pub fn value() -> u8 { 7 }\n").unwrap();
         std::fs::write(directory.path().join("private/key.txt"), b"not uploaded\n").unwrap();
         run_git(directory.path(), ["add", "."]).unwrap();
@@ -944,7 +985,7 @@ mod tests {
             .iter()
             .map(|file| file.path.as_str())
             .collect::<Vec<_>>();
-        assert_eq!(paths, vec![".pupignore", "src/lib.rs"]);
+        assert_eq!(paths, vec![".schignore", "src/lib.rs"]);
         assert!(snapshot.excluded.is_empty());
         assert_eq!(
             snapshot.manifest.tree_sha256,
@@ -985,10 +1026,10 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("alias.rs"));
-        assert!(error.contains(".pupignore"));
+        assert!(error.contains(".schignore"));
 
-        std::fs::write(directory.path().join(".pupignore"), "alias.rs\n").unwrap();
-        run_git(directory.path(), ["add", ".pupignore"]).unwrap();
+        std::fs::write(directory.path().join(".schignore"), "alias.rs\n").unwrap();
+        run_git(directory.path(), ["add", ".schignore"]).unwrap();
         run_git(directory.path(), ["commit", "-m", "Ignore symlink"]).unwrap();
         let head = repository.head().unwrap();
         let snapshot = repository.source_snapshot(&head.oid, &HashMap::new()).unwrap();

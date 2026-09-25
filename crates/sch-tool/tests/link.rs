@@ -205,10 +205,10 @@ impl Fixture {
         std::fs::write(updates.join("releases.json"), b"{}").unwrap();
         Command::new(env!("CARGO_BIN_EXE_sch"))
             .args(args)
-            .env("PUP_CONFIG_DIR", self.directory.path().join("profile"))
+            .env("SCH_CONFIG_DIR", self.directory.path().join("profile"))
             .env("PUP_API_URL", &self.url)
             .env("PUP_ACCESS_TOKEN", "test-key")
-            .env("PUP_NO_DAEMON", "1")
+            .env("SCH_NO_DAEMON", "1")
             .current_dir(directory)
             .output()
             .unwrap()

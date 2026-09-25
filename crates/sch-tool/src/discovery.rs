@@ -87,7 +87,7 @@ pub fn discover(
             "path `{path_selector}` does not match a supported Python, Rust, C, C#, JavaScript, Java, or VHDL source file"
         )
     }
-    let ignores = pupignore(repository, commit_oid)?;
+    let ignores = schignore(repository, commit_oid)?;
     let candidates: Vec<_> = matching
         .into_iter()
         .filter(|file| {
@@ -97,7 +97,7 @@ pub fn discover(
         })
         .collect();
     if candidates.is_empty() {
-        bail!("all supported source files matching path `{path_selector}` are excluded by `.pupignore`")
+        bail!("all supported source files matching path `{path_selector}` are excluded by `.schignore`")
     }
 
     let mut supertests = Vec::new();
@@ -228,16 +228,16 @@ fn path_to_git(path: &Path) -> String {
         .join("/")
 }
 
-fn pupignore(repository: &GitRepository, commit_oid: &str) -> Result<ignore::gitignore::Gitignore> {
+fn schignore(repository: &GitRepository, commit_oid: &str) -> Result<ignore::gitignore::Gitignore> {
     let mut builder = GitignoreBuilder::new(&repository.root);
-    if let Ok(source) = repository.file_at_commit(commit_oid, ".pupignore") {
+    if let Ok(source) = repository.file_at_commit(commit_oid, ".schignore") {
         for line in source.lines() {
-            builder.add_line(Some(PathBuf::from(".pupignore")), line)?;
+            builder.add_line(Some(PathBuf::from(".schignore")), line)?;
         }
     }
     builder
         .build()
-        .context("could not parse .pupignore at the selected commit")
+        .context("could not parse .schignore at the selected commit")
 }
 
 fn supported_language(path: &str) -> Option<SourceLanguage> {

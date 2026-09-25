@@ -3,9 +3,9 @@ use std::{fs, process::Command};
 fn command(profile: &std::path::Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_sch"));
     command
-        .env("PUP_CONFIG_DIR", profile)
+        .env("SCH_CONFIG_DIR", profile)
         .env("NO_COLOR", "1")
-        .env_remove("PUP_NO_UPDATE_CHECK");
+        .env_remove("SCH_NO_UPDATE_CHECK");
     command
 }
 
@@ -34,7 +34,7 @@ fn alerts_appear_once_per_invocation_without_changing_stdout_or_exit_status() {
     ] {
         for _ in 0..2 {
             let output = command(profile.path())
-                .env("PUP_NO_UPDATE_CHECK", "1")
+                .env("SCH_NO_UPDATE_CHECK", "1")
                 .args(&args)
                 .output()
                 .unwrap();
@@ -130,7 +130,7 @@ fn cached_notice_is_styled_as_text_on_stderr_and_keeps_json_and_version_output_c
     assert!(output.stderr.is_empty());
 
     let output = command(profile.path())
-        .env("PUP_NO_UPDATE_CHECK", "1")
+        .env("SCH_NO_UPDATE_CHECK", "1")
         .arg("--version")
         .output()
         .unwrap();
@@ -180,7 +180,7 @@ fn foreground_exits_while_the_detached_worker_is_waiting_on_the_network() {
     let proxy_url = format!("http://{}", proxy.local_addr().unwrap());
     let start = Instant::now();
     let output = command(profile.path())
-        .env("PUP_NO_UPDATE_CHECK", "1")
+        .env("SCH_NO_UPDATE_CHECK", "1")
         .env("HTTPS_PROXY", &proxy_url)
         .env("https_proxy", &proxy_url)
         .env("ALL_PROXY", &proxy_url)

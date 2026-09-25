@@ -37,7 +37,7 @@ impl Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Authenticate Pup with Schematic.
+    /// Authenticate sch with your Schematic account.
     Login,
     /// Remove the locally stored credential.
     Logout,
@@ -106,7 +106,7 @@ pub struct CheckSourceArgs {
     /// Check an existing commit without including working-tree changes.
     #[arg(long, value_name = "GIT_REVISION", conflicts_with = "dirty")]
     pub commit: Option<String>,
-    /// Include working-tree changes in a temporary Pup commit.
+    /// Include working-tree changes in a temporary commit.
     #[arg(long)]
     pub dirty: bool,
 }

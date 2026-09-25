@@ -1,8 +1,8 @@
 # Schematic CLI
 
 Use Pup through the Schematic CLI `sch` to check software behavior.
-It finds supertests in C, C#, Java, JavaScript, Python, Rust, and VHDL, sends source to
-Schematic for checking, and displays results and proposed fixes.
+The CLI finds supertests in C, C#, Java, JavaScript, Python, Rust, and VHDL, checks them with Pup,
+and displays results and proposed fixes.
 
 JavaScript and VHDL support is currently being rolled out. See
 [language support](https://docs.schematic.tech/pup/get-started/#language-support) for availability.

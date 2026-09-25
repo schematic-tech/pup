@@ -140,11 +140,11 @@ pub struct StateStore {
 
 impl StateStore {
     pub fn discover() -> Result<Self> {
-        let directory = if let Some(path) = std::env::var_os("PUP_CONFIG_DIR") {
+        let directory = if let Some(path) = std::env::var_os("SCH_CONFIG_DIR") {
             PathBuf::from(path)
         } else {
-            ProjectDirs::from("tech", "Schematic", "pup")
-                .context("could not determine the Pup configuration directory")?
+            ProjectDirs::from("tech", "Schematic", "sch")
+                .context("could not determine the sch configuration directory")?
                 .config_dir()
                 .to_owned()
         };
@@ -160,7 +160,7 @@ impl StateStore {
                 let version = value.get("schema_version").and_then(serde_json::Value::as_u64);
                 if version != Some(u64::from(LOCAL_STATE_SCHEMA_VERSION)) {
                     anyhow::bail!(
-                        "{} uses an incompatible Pup state schema; expected version {LOCAL_STATE_SCHEMA_VERSION}",
+                        "{} uses an incompatible sch state schema; expected version {LOCAL_STATE_SCHEMA_VERSION}",
                         path.display()
                     )
                 }
@@ -174,11 +174,11 @@ impl StateStore {
     pub fn update<T>(&self, change: impl FnOnce(&mut LocalState) -> Result<T>) -> Result<T> {
         self.ensure_directory()?;
         let lock = self.open_lock()?;
-        lock.lock_exclusive().context("could not lock Pup state")?;
+        lock.lock_exclusive().context("could not lock sch state")?;
         let mut state = self.load()?;
         let result = change(&mut state)?;
         self.save_unlocked(&state)?;
-        FileExt::unlock(&lock).context("could not unlock Pup state")?;
+        FileExt::unlock(&lock).context("could not unlock sch state")?;
         Ok(result)
     }
 
@@ -223,7 +223,7 @@ impl StateStore {
         if let Ok(metadata) = fs::symlink_metadata(&path) {
             if metadata.file_type().is_symlink() {
                 anyhow::bail!(
-                    "refusing to follow a symbolic link for private Pup state {}",
+                    "refusing to follow a symbolic link for private sch state {}",
                     path.display()
                 )
             }
@@ -279,7 +279,7 @@ impl StateStore {
     fn ensure_directory(&self) -> Result<()> {
         fs::create_dir_all(&self.directory).with_context(|| {
             format!(
-                "could not create Pup configuration directory {}",
+                "could not create sch configuration directory {}",
                 self.directory.display()
             )
         })?;
@@ -306,9 +306,9 @@ impl StateStore {
         fs::rename(&temporary, &path).with_context(|| format!("could not replace {}", path.display()))?;
         #[cfg(unix)]
         File::open(&self.directory)
-            .context("could not open the Pup configuration directory for synchronization")?
+            .context("could not open the sch configuration directory for synchronization")?
             .sync_all()
-            .context("could not synchronize the Pup configuration directory")?;
+            .context("could not synchronize the sch configuration directory")?;
         Ok(())
     }
 }
@@ -318,7 +318,7 @@ fn open_private(path: &Path) -> Result<File> {
         && metadata.file_type().is_symlink()
     {
         anyhow::bail!(
-            "refusing to follow a symbolic link for private Pup state {}",
+            "refusing to follow a symbolic link for private sch state {}",
             path.display()
         )
     }
@@ -362,7 +362,7 @@ mod tests {
                 .load()
                 .unwrap_err()
                 .to_string()
-                .contains("incompatible Pup state schema")
+                .contains("incompatible sch state schema")
         );
 
         fs::write(store.state_path(), br#"{"schema_version":2,"repositories":[]}"#).unwrap();

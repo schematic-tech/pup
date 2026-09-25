@@ -20,7 +20,7 @@ const FALLBACK_RECONCILE_INTERVAL: Duration = Duration::from_secs(30);
 const EVENT_COALESCE_DELAY: Duration = Duration::from_millis(75);
 
 pub fn ensure_daemon(store: &StateStore) -> Result<()> {
-    if std::env::var_os("PUP_NO_DAEMON").is_some() || std::env::var_os("PUP_ACCESS_TOKEN").is_some() {
+    if std::env::var_os("SCH_NO_DAEMON").is_some() || std::env::var_os("PUP_ACCESS_TOKEN").is_some() {
         return Ok(());
     }
     let lock = store.daemon_lock()?;
@@ -28,7 +28,7 @@ pub fn ensure_daemon(store: &StateStore) -> Result<()> {
         return Ok(());
     }
     FileExt::unlock(&lock)?;
-    let executable = std::env::current_exe().context("could not locate the Schematic CLI executable")?;
+    let executable = std::env::current_exe().context("could not locate the sch executable")?;
     Command::new(executable)
         .arg("daemon")
         .env_remove("PUP_ACCESS_TOKEN")
@@ -36,7 +36,7 @@ pub fn ensure_daemon(store: &StateStore) -> Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .context("could not start the Pup repository observer")?;
+        .context("could not start the sch repository observer")?;
     Ok(())
 }
 
@@ -72,10 +72,10 @@ fn git_watcher(store: &StateStore) -> Result<(RecommendedWatcher, tokio::sync::m
     let mut watcher = notify::recommended_watcher(move |_event| {
         let _ = sender.try_send(());
     })
-    .context("could not start the Pup Git observer")?;
+    .context("could not start the sch Git observer")?;
     watcher
         .watch(store.profile_directory(), RecursiveMode::NonRecursive)
-        .context("could not watch the Pup profile")?;
+        .context("could not watch the sch profile")?;
     let state = store.load()?;
     let roots = state
         .repositories

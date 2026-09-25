@@ -107,7 +107,7 @@ fn new_language_discovery_respects_exclusions_and_rejects_ambiguous_names() {
         let ignored = Fixture::with_files(
             false,
             false,
-            &[(&path, source), (".pupignore", "supertests/\n"), ("test.py", SOURCE)],
+            &[(&path, source), (".schignore", "supertests/\n"), ("test.py", SOURCE)],
             |_| {},
         );
         let output = ignored.run(&["check", ".", "--detach", "--json"]);
@@ -553,10 +553,10 @@ impl Fixture {
         command
             .args(args)
             .current_dir(self.directory.path().join("repo"))
-            .env("PUP_CONFIG_DIR", self.directory.path().join("config"))
+            .env("SCH_CONFIG_DIR", self.directory.path().join("config"))
             .env("PUP_API_URL", &self.service.origin)
             .env("PUP_ACCESS_TOKEN", "fixture-token")
-            .env("PUP_NO_DAEMON", "1")
+            .env("SCH_NO_DAEMON", "1")
             .env("NO_COLOR", "1");
         command
     }

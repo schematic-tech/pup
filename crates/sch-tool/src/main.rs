@@ -1076,7 +1076,7 @@ fn local_context(store: &StateStore, path: Option<&Path>) -> Result<(LocalState,
 fn require_committed_source(git: &git::GitRepository) -> Result<()> {
     if !git.has_commits()? {
         bail!(
-            "Repository has no commits\n  Pup needs one local commit to establish source identity.\n  From {}, run `git add -A && git commit -m \"Initial commit\"`, then retry.\n  A Git remote is not required.",
+            "Repository has no commits\n  sch needs one local commit to establish source identity.\n  From {}, run `git add -A && git commit -m \"Initial commit\"`, then retry.\n  A Git remote is not required.",
             git.root.display()
         )
     }

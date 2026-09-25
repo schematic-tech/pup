@@ -47,14 +47,14 @@ pub fn on_startup(ui: &mut Ui) {
     };
     let directory = store.profile_directory().join("updates");
     // The foreground only reads the last complete cache. All network work belongs
-    // to a short-lived child, so a slow or unavailable server cannot delay Pup.
+    // to a short-lived child, so a slow or unavailable server cannot delay the CLI.
     if let Some(release) = cached_release(&directory) {
         // An operator notice may replace the installation instructions themselves.
         let alerted = release
             .alert
             .as_deref()
             .is_some_and(|message| ui.release_alert(message));
-        if !alerted && std::env::var_os("PUP_NO_UPDATE_CHECK").is_none() && release.is_newer(env!("CARGO_PKG_VERSION"))
+        if !alerted && std::env::var_os("SCH_NO_UPDATE_CHECK").is_none() && release.is_newer(env!("CARGO_PKG_VERSION"))
         {
             ui.update_available(env!("CARGO_PKG_VERSION"), &release.version);
         }
@@ -137,9 +137,9 @@ fn spawn_refresh_with(directory: &Path, executable: &Path) -> Result<()> {
         command.creation_flags(0x0000_0008 | 0x0000_0200);
     }
     let mut child = command.spawn()?;
-    // Reap the child if Pup remains running; this thread never delays shutdown.
+    // Reap the child if the CLI remains running; this thread never delays shutdown.
     let _ = std::thread::Builder::new()
-        .name("pup-release-refresh".into())
+        .name("sch-release-refresh".into())
         .spawn(move || {
             let _ = child.wait();
         });
